@@ -432,7 +432,11 @@
       .results-dstat:nth-child(n+4) { display: none; }
       .results-tabs-inner { min-height: 56px; flex-wrap: wrap; }
       .results-tabs-label, .results-updated { display: none; }
-      .results-seg [role=tab] { padding: 8px 14px; font-size: 13.5px; }
+      .results-tabs { position: static; box-shadow: none; }
+      .results-tabs-inner { min-height: 0; padding-top: 8px; padding-bottom: 8px; }
+      .results-seg { gap: 3px; padding: 3px; border-radius: 12px; }
+      .results-seg [role=tab] { padding: 5px 10px; font-size: 12.5px; min-height: 30px; gap: 5px; }
+      .results-seg .results-cnt { font-size: 10px; padding: 1px 6px; }
       .results-toolbar input { width: 100%; }
       .results-table-wrap { overflow: visible; }
       table.results-table, table.results-table tbody { display: block; width: 100%; }
