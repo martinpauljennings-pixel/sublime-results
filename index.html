@@ -295,6 +295,7 @@
       box-shadow: 0 0 0 3px color-mix(in srgb, var(--results-accent) 22%, transparent);
     }
     .results-toolbar select { min-width: 140px; }
+    .results-toolbar select.results-sort { display: none; }
 
     /* Table */
     .results-table-wrap { width: 100%; overflow-x: auto; }
@@ -438,6 +439,7 @@
       .results-seg [role=tab] { padding: 5px 10px; font-size: 12.5px; min-height: 30px; gap: 5px; }
       .results-seg .results-cnt { font-size: 10px; padding: 1px 6px; }
       .results-toolbar input { width: 100%; }
+      .results-toolbar select.results-sort { display: block; width: 100%; }
       .results-table-wrap { overflow: visible; }
       table.results-table, table.results-table tbody { display: block; width: 100%; }
       table.results-table thead { display: none; }
@@ -774,6 +776,11 @@
       html += '<select id="f-gender" aria-label="Gender">' + options(genders, state.gender, 'Gender') + '</select>';
       html += '<select id="f-category" aria-label="Category">' + options(cats, state.category, 'Category') + '</select>';
       html += '<select id="f-club" aria-label="Club">' + options(clubs, state.club, 'Club') + '</select>';
+      var sortOpts = [['place','asc','Position'],['name','asc','Name A to Z'],['name','desc','Name Z to A'],['gender','asc','Gender'],['genderPos','asc','Gender position'],['category','asc','Category'],['catPos','asc','Category position'],['club','asc','Club A to Z'],['bib','asc','Bib'],['time','asc','Time (fastest first)'],['time','desc','Time (slowest first)']];
+      var curSort = state.sortKey + '|' + state.sortDir;
+      html += '<select id="f-sort" class="results-sort" aria-label="Sort by">';
+      sortOpts.forEach(function (o) { var v = o[0] + '|' + o[1]; html += '<option value="' + v + '"' + (v === curSort ? ' selected' : '') + '>Sort by: ' + o[2] + '</option>'; });
+      html += '</select>';
       html += '</div>';
       html += '<p class="results-count" id="visible-count"></p>';
       html += '<div class="results-table-wrap"><table class="results-table" id="results-table">';
@@ -793,6 +800,7 @@
       document.getElementById('q').addEventListener('input', function (e) { state.query = e.target.value; paintRows(); });
       document.getElementById('f-gender').addEventListener('change', function (e) { state.gender = e.target.value; paintRows(); });
       document.getElementById('f-category').addEventListener('change', function (e) { state.category = e.target.value; paintRows(); });
+      document.getElementById('f-sort').addEventListener('change', function (e) { var v = e.target.value.split('|'); state.sortKey = v[0]; state.sortDir = v[1]; renderPanels(); });
       document.getElementById('f-club').addEventListener('change', function (e) { state.club = e.target.value; paintRows(); });
       host.querySelectorAll('thead th[data-key]').forEach(function (thEl) {
         thEl.addEventListener('click', function () {
