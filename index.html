@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026 - Eastern AA Cross Country Championships results</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Raleway:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --results-accent: #32cd32;
+      --results-accent-dark: #1e8f1e;
+      --results-ink: #141414;
+      --results-link: #2b5672;
+      --results-grey: #5d5d61;
+      --results-rule: #d6dbd8;
+      --results-zebra: #f3f7f4;
+      --results-hover: #e3f5e3;
+      --results-text: #222222;
+      --results-hl: #fff3cd;
+      --results-on-ink: #ffffff;
+      --results-on-ink-muted: #e4edf6;
+      --results-on-accent: #141414;
+      --results-heading-font: Poppins, Arial, sans-serif;
+      --results-body-font: Raleway, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: var(--results-text);
+    }
+    body {
+      font-family: var(--results-body-font);
+      font-weight: 500;
+      font-size: 15px;
+      line-height: 1.5;
+      font-variant-numeric: lining-nums;
+    }
+    a { color: var(--results-accent); }
+    .results-shell-inner { max-width: 1200px; margin: 0 auto; padding: 0 32px; }
+
+    /* Top nav */
+    .navbar {
+      background: #fff;
+      border-bottom: 1px solid #eee;
+    }
+    .navbar-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .navbar-brand { display: flex; align-items: center; text-decoration: none; }
+    .navbar-brand img { height: 28px; width: auto; display: block; }
+    .navbar-nav {
+      display: flex;
+      gap: 8px 22px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .navbar-nav a {
+      color: #222;
+      text-decoration: none;
+      font: 500 13px var(--results-heading-font);
+    }
+    .navbar-nav a:hover { color: var(--results-accent-dark); }
+    .nav-toggle {
+      display: none;
+      background: none;
+      border: 0;
+      padding: 6px;
+      cursor: pointer;
+    }
+    .nav-toggle span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: #222;
+      margin: 4px 0;
+    }
+
+    /* Hero */
+    .results-hero {
+      position: relative;
+      background: var(--results-ink);
+      color: var(--results-on-ink);
+      overflow: hidden;
+    }
+    .results-hero-inner { position: relative; z-index: 1; padding-top: 40px; padding-bottom: 36px; }
+    .results-hero::before {
+      content: "";
+      position: absolute;
+      right: 28px;
+      top: 16px;
+      height: calc(100% - 32px);
+      width: 180px;
+      background: url('https://entries.sublimetiming.com/img/results/arcs.svg?v=20261107a') no-repeat right center / auto 100%;
+      opacity: .22;
+      pointer-events: none;
+    }
+    .results-kicker {
+      font: 500 12px var(--results-heading-font);
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: var(--results-on-ink-muted);
+      margin: 0;
+    }
+    .results-hero h1 {
+      font: 600 36px/1.15 var(--results-heading-font);
+      color: var(--results-on-ink);
+      margin: 8px 0 12px;
+    }
+    .results-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 28px;
+      font-size: 14px;
+      color: var(--results-on-ink-muted);
+      margin: 0;
+    }
+    .results-meta b {
+      font: 600 12px var(--results-heading-font);
+      color: var(--results-on-ink-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-right: 6px;
+    }
+    .results-stats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+    .results-stat {
+      background: rgba(255,255,255,.10);
+      border-left: 3px solid var(--results-on-ink-muted);
+      padding: 8px 14px;
+      font-size: 12.5px;
+      color: var(--results-on-ink-muted);
+    }
+    .results-stat em {
+      display: block;
+      font: 600 20px var(--results-heading-font);
+      font-style: normal;
+      color: var(--results-on-ink);
+    }
+    .results-hero-rule { height: 6px; background: var(--results-accent); }
+
+    /* Race pills */
+    .results-tabs {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #fff;
+      border-bottom: 1px solid var(--results-rule);
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    }
+    .results-tabs-inner {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      min-height: 64px;
+    }
+    .results-tabs-inner .results-seg { flex: 1 1 auto; }
+    .results-tabs-label {
+      font: 600 11px var(--results-heading-font);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--results-grey);
+      flex: 0 0 auto;
+    }
+    .results-seg {
+      display: flex;
+      gap: 4px;
+      background: #f0f2f1;
+      border-radius: 999px;
+      padding: 4px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      scroll-snap-type: x mandatory;
+      max-width: 100%;
+    }
+    .results-seg::-webkit-scrollbar { display: none; }
+    .results-seg [role=tab] {
+      flex: 0 0 auto;
+      scroll-snap-align: center;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font: 600 14px var(--results-heading-font);
+      color: var(--results-ink);
+      background: transparent;
+      border: 0;
+      border-radius: 999px;
+      padding: 9px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      min-height: 40px;
+    }
+    .results-seg [role=tab]:hover { background: var(--results-hover); }
+    .results-seg [role=tab][aria-selected=true] {
+      background: var(--results-ink);
+      color: var(--results-on-ink);
+      box-shadow: inset 0 -3px 0 var(--results-accent);
+    }
+    .results-seg [role=tab]:focus-visible {
+      outline: 3px solid var(--results-accent);
+      outline-offset: 2px;
+    }
+    .results-seg .results-cnt {
+      font: 500 11px var(--results-heading-font);
+      background: rgba(0,0,0,.08);
+      border-radius: 999px;
+      padding: 2px 8px;
+    }
+    .results-seg [aria-selected=true] .results-cnt {
+      background: var(--results-on-ink);
+      color: var(--results-ink);
+    }
+
+    /* Race section */
+    .results-body { padding-bottom: 40px; }
+    .results-panel { padding-top: 30px; }
+    .results-panel[hidden] { display: none; }
+    .results-dist-head {
+      display: flex;
+      align-items: baseline;
+      gap: 18px;
+      margin-bottom: 16px;
+      padding-bottom: 7px;
+      border-bottom: 3px solid var(--results-accent);
+      flex-wrap: wrap;
+    }
+    .results-dist-title {
+      font: 600 24px var(--results-heading-font);
+      color: var(--results-ink);
+      margin: 0;
+    }
+    .results-start { font: 500 13px var(--results-heading-font); color: var(--results-grey); margin: 0; }
+    .results-mode {
+      font: 600 11px var(--results-heading-font);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--results-ink);
+      border: 1px solid var(--results-rule);
+      border-radius: 999px;
+      padding: 2px 10px;
+    }
+    .results-dstats { display: flex; flex-wrap: wrap; gap: 8px; margin: -4px 0 16px; }
+    .results-dstat {
+      border-left: 3px solid var(--results-accent);
+      background: var(--results-zebra);
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--results-grey);
+    }
+    .results-dstat em {
+      display: block;
+      font: 600 17px var(--results-heading-font);
+      font-style: normal;
+      color: var(--results-ink);
+    }
+    .results-count { font-size: 13px; color: var(--results-grey); margin: 8px 0; }
+
+    /* Toolbar */
+    .results-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin: 0 0 12px;
+    }
+    .results-toolbar input,
+    .results-toolbar select {
+      font: 500 14px var(--results-body-font);
+      height: 40px;
+      border: 1px solid var(--results-rule);
+      border-radius: 3px;
+      box-shadow: none;
+      padding: 0 10px;
+      color: var(--results-text);
+      background: #fff;
+    }
+    .results-toolbar input { width: 280px; max-width: 100%; }
+    .results-toolbar input:focus,
+    .results-toolbar select:focus {
+      outline: none;
+      border-color: var(--results-accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--results-accent) 22%, transparent);
+    }
+    .results-toolbar select { min-width: 140px; }
+
+    /* Table */
+    .results-table-wrap { width: 100%; overflow-x: auto; }
+    table.results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      border: 1px solid var(--results-rule);
+    }
+    table.results-table thead th {
+      background: var(--results-ink);
+      color: var(--results-on-ink);
+      border: 0;
+      border-bottom: 3px solid var(--results-accent);
+      vertical-align: bottom;
+      font: 600 12.5px/1.25 var(--results-heading-font);
+      padding: 11px 10px;
+      white-space: nowrap;
+      text-align: left;
+      cursor: pointer;
+      user-select: none;
+    }
+    table.results-table thead th::after {
+      content: "\2195";
+      margin-left: 5px;
+      color: var(--results-on-ink-muted);
+      font-size: 11px;
+      font-weight: 500;
+    }
+    table.results-table thead th.sort-asc::after { content: "\25B2"; color: var(--results-on-ink); font-size: 9px; }
+    table.results-table thead th.sort-desc::after { content: "\25BC"; color: var(--results-on-ink); font-size: 9px; }
+    table.results-table tbody td {
+      padding: 9px 10px;
+      border-top: 0;
+      border-bottom: 1px solid var(--results-rule);
+      vertical-align: middle;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table.results-table tbody tr:nth-child(even) td { background: var(--results-zebra); }
+    table.results-table tbody tr:hover td { background: var(--results-hover); }
+    table.results-table tbody tr:last-child td { border-bottom: 2px solid var(--results-ink); }
+    .results-col-time { font-family: var(--results-heading-font); white-space: nowrap; }
+    .results-pos {
+      display: inline-block;
+      min-width: 30px;
+      font: 600 14px var(--results-heading-font);
+      color: var(--results-ink);
+    }
+    tr.podium .results-pos {
+      background: var(--results-accent);
+      color: var(--results-on-accent);
+      border-radius: 3px;
+      text-align: center;
+      padding: 1px 0;
+    }
+    .runner-name {
+      color: var(--results-accent);
+      font-weight: 500;
+      text-decoration: none;
+    }
+    .runner-name b { font-weight: 700; }
+    .results-muted { color: var(--results-grey); }
+    tr.result-search-highlight > td { background: var(--results-hl) !important; }
+
+    .results-empty, .results-status {
+      color: var(--results-grey);
+      padding: 24px 0;
+    }
+    .results-updated {
+      font-size: 12px;
+      color: var(--results-grey);
+      margin: 0 0 0 auto;
+      white-space: nowrap;
+    }
+
+    /* Footer */
+    footer.results-footer {
+      width: 100%;
+      margin: 40px 0 0;
+      padding: 0;
+      background: var(--results-ink);
+      color: #e8e8e8;
+      font: 400 13px/1.7 var(--results-heading-font);
+    }
+    footer.results-footer::before {
+      content: "";
+      display: block;
+      height: 6px;
+      background: var(--results-accent);
+    }
+    .results-foot-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 26px 32px 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+    .results-foot-logo {
+      background: #fff;
+      padding: 6px 10px;
+      border-radius: 3px;
+    }
+    .results-foot-logo img { height: 22px; width: auto; display: block; }
+    footer.results-footer a { color: #e8e8e8; text-decoration: none; }
+    footer.results-footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 1200px) {
+      .results-seg [role=tab] { padding: 8px 12px; font-size: 13px; }
+    }
+    @media (max-width: 900px) {
+      .navbar-nav { display: none; }
+      .navbar-nav.open { display: flex; }
+      .navbar-inner { flex-wrap: wrap; }
+      .nav-toggle { display: block; }
+    }
+    @media (max-width: 767px) {
+      .results-shell-inner, .navbar-inner { padding-left: 20px; padding-right: 20px; }
+      .results-hero-inner { padding-top: 18px; padding-bottom: 16px; }
+      .results-hero h1 { font-size: 26px; }
+      .results-hero::before { height: 130px; right: -4px; top: 8px; }
+      .results-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 14px; }
+      .results-stat { padding: 5px 8px; font-size: 10.5px; grid-column: span 2; }
+      .results-stat em { font-size: 15px; }
+      .results-stat:nth-child(4), .results-stat:nth-child(5) { grid-column: span 3; }
+      .results-shell.has-tabs .results-hero .results-stat:nth-child(n+2) { display: none; }
+      .results-shell.has-tabs .results-hero .results-stat:first-child { grid-column: 1 / -1; }
+      .results-dist-title { font-size: 20px; }
+      .results-panel { padding-top: 20px; }
+      .results-dist-head { flex-direction: column; gap: 2px; }
+      .results-dstat { padding: 4px 8px; font-size: 10.5px; }
+      .results-dstat em { font-size: 14px; }
+      .results-dstat:nth-child(n+4) { display: none; }
+      .results-tabs-inner { min-height: 56px; flex-wrap: wrap; }
+      .results-tabs-label, .results-updated { display: none; }
+      .results-seg [role=tab] { padding: 8px 14px; font-size: 13.5px; }
+      .results-toolbar input { width: 100%; }
+      .results-table-wrap { overflow: visible; }
+      table.results-table, table.results-table tbody { display: block; width: 100%; }
+      table.results-table thead { display: none; }
+      table.results-table tbody tr {
+        display: grid;
+        grid-template-columns: 46px 1fr auto;
+        grid-template-areas: "pos name time" "pos sub sub";
+        column-gap: 10px;
+        padding: 10px 12px;
+        border: 1px solid var(--results-rule);
+        border-left: 4px solid var(--results-ink);
+        margin-bottom: 8px;
+        border-radius: 3px;
+        background: #fff;
+      }
+      table.results-table tbody tr.podium { border-left-color: var(--results-accent); }
+      table.results-table tbody tr > td {
+        display: none;
+        padding: 0;
+        border: 0 !important;
+        background: none !important;
+      }
+      table.results-table tbody tr > td.results-col-pos { display: block; grid-area: pos; align-self: center; }
+      table.results-table tbody tr > td.results-col-name { display: block; grid-area: name; font-size: 15px; }
+      table.results-table tbody tr > td.results-col-time { display: block; grid-area: time; text-align: right; font-size: 15px; }
+      table.results-table tbody tr > td.results-col-cat { display: block; grid-area: sub; font-size: 12px; color: var(--results-grey); }
+      table.results-table tbody tr:last-child { border-bottom: 1px solid var(--results-rule); }
+    }
+  </style>
+</head>
+<body class="results-shell-page" data-preset="sublime">
+  <nav class="navbar">
+    <div class="navbar-inner">
+      <a class="navbar-brand" href="https://www.sublimetiming.com/">
+        <img alt="Sublime Timing" src="https://static.wixstatic.com/media/dc7386_c2e44a0c740744779b05fa1338c7ea95~mv2.png">
+      </a>
+      <button class="nav-toggle" type="button" aria-label="Menu" onclick="document.getElementById('nav-links').classList.toggle('open')">
+        <span></span><span></span><span></span>
+      </button>
+      <ul class="navbar-nav" id="nav-links">
+        <li><a href="https://www.sublimetiming.com/">Home</a></li>
+        <li><a href="https://www.sublimetiming.com/results">Results</a></li>
+        <li><a href="https://www.sublimetiming.com/copy-of-testimonials">Chip Timing Services</a></li>
+        <li><a href="https://entries.sublimetiming.com/race">Events</a></li>
+        <li><a href="https://www.sublimetiming.com/contact-8">Contact</a></li>
+        <li><a href="https://www.sublimetiming.com/about-1">About</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="results-shell has-tabs" data-preset="sublime" data-show-arcs="1">
+    <header class="results-hero">
+      <div class="results-hero-inner results-shell-inner">
+        <p class="results-kicker">Official results</p>
+        <h1 id="event-title">2026 - Eastern AA Cross Country Championships</h1>
+        <p class="results-meta"><span><b>Location</b> <span id="event-location">Horseheath Racecourse</span></span></p>
+        <div class="results-stats" id="hero-stats"></div>
+      </div>
+      <div class="results-hero-rule" aria-hidden="true"></div>
+    </header>
+
+    <nav class="results-tabs" aria-label="Race">
+      <div class="results-tabs-inner results-shell-inner">
+        <span class="results-tabs-label" id="results-race-label">Race</span>
+        <div class="results-seg" role="tablist" aria-labelledby="results-race-label" id="race-tabs"></div>
+      </div>
+    </nav>
+
+    <div class="results-body">
+      <div class="results-shell-inner" id="race-panels">
+        <p class="results-status" id="load-status">Loading results…</p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="results-footer">
+    <div class="results-foot-inner">
+      <span class="results-foot-logo">
+        <img alt="Sublime Timing" src="https://static.wixstatic.com/media/dc7386_c2e44a0c740744779b05fa1338c7ea95~mv2.png">
+      </span>
+      <p style="margin:0">
+        <a href="https://www.sublimetiming.com/">sublimetiming.com</a>
+        · © 2026
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    var state = {
+      data: null,
+      activeId: null,
+      query: '',
+      gender: '',
+      category: '',
+      club: '',
+      sortKey: 'place',
+      sortDir: 'asc'
+    };
+
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function splitName(name) {
+      var parts = String(name || '').trim().split(/\s+/);
+      if (parts.length < 2) return { first: name || '', last: '' };
+      return { first: parts.slice(0, -1).join(' '), last: parts[parts.length - 1] };
+    }
+
+    function nameHtml(name) {
+      var p = splitName(name);
+      if (!p.last) return '<span class="runner-name">' + esc(p.first) + '</span>';
+      return '<span class="runner-name">' + esc(p.first) + ' <b>' + esc(p.last) + '</b></span>';
+    }
+
+    function dash(v) {
+      if (v === 0) return '0';
+      if (v === undefined || v === null || v === '') return '<span class="results-muted">–</span>';
+      return esc(v);
+    }
+
+    function formatWhen(s) {
+      if (!s) return '';
+      var m = String(s).match(/(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})/);
+      if (m) return m[2] + ' Europe/London';
+      return s + ' Europe/London';
+    }
+
+    var DATA_URL = 'https://script.google.com/macros/s/AKfycbxSFwxaKdgrujWu7yHU7WGTW8GqMC26ZGRahYuk5elX8sh2czKdHA3fpgobjtU_dq-FxQ/exec';
+    var LOCAL_JSON = 'results.json';
+
+    function showLoadError(msg) {
+      var el = document.getElementById('load-status');
+      if (el) el.textContent = msg || 'Could not load results.';
+    }
+
+    function applyData(data, keepFilters) {
+      if (!data || !data.races) {
+        showLoadError('Results data is not available.');
+        return;
+      }
+      if (keepFilters && state.data) {
+        var keepId = state.activeId;
+        var q = state.query, g = state.gender, c = state.category, cl = state.club, sk = state.sortKey, sd = state.sortDir;
+        state.data = data;
+        state.activeId = keepId;
+        state.query = q; state.gender = g; state.category = c; state.club = cl;
+        state.sortKey = sk; state.sortDir = sd;
+        renderHero();
+        renderTabs();
+        renderUpdated();
+        renderPanels();
+        return;
+      }
+      render(data);
+    }
+
+    function fetchNoCookies(url) {
+      return fetch(url, { credentials: 'omit', cache: 'no-store' }).then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.text().then(function (text) {
+          var data = JSON.parse(text);
+          if (!data || !data.races) throw new Error('bad-payload');
+          return data;
+        });
+      });
+    }
+
+    function loadData(keepFilters) {
+      if (window.MOCK_DATA) {
+        applyData(window.MOCK_DATA, keepFilters);
+        return;
+      }
+      var sep = DATA_URL.indexOf('?') >= 0 ? '&' : '?';
+      var liveUrl = DATA_URL + sep + 'format=json';
+      // Prefer same-origin results.json (written by a scheduled job) so the
+      // browser never talks to Google. Fall back to the Apps Script JSON
+      // endpoint with credentials omitted, so no Google cookies are sent.
+      fetchNoCookies(liveUrl)
+        .then(function (data) { applyData(data, keepFilters); })
+        .catch(function (err) {
+          if (!keepFilters) showLoadError('Could not load results. ' + (err && err.message ? err.message : ''));
+        });
+    }
+
+    function render(data) {
+      state.data = data;
+      if (!state.activeId && data.races && data.races.length) {
+        var withResults = data.races.filter(function (r) { return r.hasResults; });
+        state.activeId = (withResults[0] || data.races[0]).id;
+      }
+      document.getElementById('event-title').textContent = data.title || '2026 - Eastern AA Cross Country Championships';
+      document.getElementById('event-location').textContent = data.location || 'Horseheath Racecourse';
+      document.title = (data.title || 'Results') + ' results';
+      renderHero();
+      renderTabs();
+      renderUpdated();
+      renderPanels();
+    }
+
+    function renderHero() {
+      var data = state.data;
+      var race = currentRace();
+      var finishers = data.totals ? data.totals.finishers : 0;
+      var men = data.totals ? data.totals.men : 0;
+      var women = data.totals ? data.totals.women : 0;
+      var firstMan = race && race.firstMan;
+      var firstWoman = race && race.firstWoman;
+      var html = '';
+      html += statHtml('Finishers', finishers, '');
+      html += statHtml('Men', men, '');
+      html += statHtml('Women', women, '');
+      html += statHtml('1st man', firstMan ? firstMan.time : '—', firstMan ? firstMan.name : '');
+      html += statHtml('1st woman', firstWoman ? firstWoman.time : '—', firstWoman ? firstWoman.name : '');
+      document.getElementById('hero-stats').innerHTML = html;
+    }
+
+    function statHtml(label, value, extra) {
+      return '<div class="results-stat">' + esc(label) + '<em>' + esc(value) + '</em>' +
+        (extra ? esc(extra) : '') + '</div>';
+    }
+
+    function renderTabs() {
+      var races = state.data.races || [];
+      var html = races.map(function (r) {
+        var selected = String(r.id) === String(state.activeId);
+        var count = r.hasResults ? r.finishers : r.entered;
+        var label = r.hasResults ? (count + ' finishers') : (count + ' entered');
+        return '<button type="button" role="tab" id="tab-' + esc(r.id) + '"' +
+          ' aria-controls="panel-' + esc(r.id) + '"' +
+          ' aria-selected="' + (selected ? 'true' : 'false') + '"' +
+          ' tabindex="' + (selected ? '0' : '-1') + '"' +
+          ' data-id="' + esc(r.id) + '">' +
+          esc(r.tab) +
+          '<span class="results-cnt" aria-label="' + esc(label) + '">' + esc(count) + '</span>' +
+          '</button>';
+      }).join('');
+      var wrap = document.getElementById('race-tabs');
+      wrap.innerHTML = html;
+      wrap.querySelectorAll('[role=tab]').forEach(function (btn) {
+        btn.addEventListener('click', function () { selectRace(btn.getAttribute('data-id')); });
+      });
+    }
+
+    function updatedText() {
+      var d = state.data || {};
+      var tm = d.serverTime || '';
+      var status = d.status || '';
+      var m = status.match(/OK\s+(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2})/);
+      return m ? ('Updated ' + formatWhen(m[1])) : (tm ? ('Updated ' + formatWhen(tm)) : '');
+    }
+
+    function renderUpdated() {}
+
+    function currentRace() {
+      var races = (state.data && state.data.races) || [];
+      for (var i = 0; i < races.length; i++) {
+        if (String(races[i].id) === String(state.activeId)) return races[i];
+      }
+      return races[0] || null;
+    }
+
+    function selectRace(id) {
+      state.activeId = id;
+      state.query = '';
+      state.gender = '';
+      state.category = '';
+      state.club = '';
+      var race = currentRace();
+      state.sortKey = race && race.hasResults ? 'place' : 'bib';
+      state.sortDir = 'asc';
+      renderHero();
+      renderTabs();
+      renderPanels();
+      var panel = document.getElementById('panel-' + id);
+      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function unique(rows, key) {
+      var seen = {}, out = [];
+      rows.forEach(function (r) {
+        var v = r[key];
+        if (!v || seen[v]) return;
+        seen[v] = 1;
+        out.push(v);
+      });
+      out.sort(function (a, b) { return String(a).localeCompare(String(b)); });
+      return out;
+    }
+
+    function renderPanels() {
+      var race = currentRace();
+      var host = document.getElementById('race-panels');
+      if (!race) {
+        host.innerHTML = '<p class="results-empty">No races to display.</p>';
+        return;
+      }
+      var start = race.start ? ('Start ' + race.start + (race.distance ? ' · ' + race.distance : '')) : (race.distance || '');
+      var mode = race.hasResults ? 'Results' : 'Start list';
+      var options = function (vals, selected, emptyLabel) {
+        return '<option value="">' + esc(emptyLabel) + '</option>' + vals.map(function (v) {
+          return '<option value="' + esc(v) + '"' + (v === selected ? ' selected' : '') + '>' + esc(v) + '</option>';
+        }).join('');
+      };
+      var genders = unique(race.rows, 'gender');
+      var cats = unique(race.rows, 'category');
+      var clubs = unique(race.rows, 'club');
+
+      var html = '<section class="results-panel" id="panel-' + esc(race.id) + '" role="tabpanel" aria-labelledby="tab-' + esc(race.id) + '">';
+      html += '<div class="results-dist-head">';
+      html += '<h2 class="results-dist-title">' + esc(race.name) + '</h2>';
+      if (start) html += '<p class="results-start">' + esc(start) + '</p>';
+      html += '<span class="results-mode">' + esc(mode) + '</span>';
+      html += '</div>';
+      html += '<div class="results-dstats">';
+      if (race.hasResults) {
+        html += statTile('Finishers', race.finishers);
+        html += statTile('Men', race.men);
+        html += statTile('Women', race.women);
+        html += statTile('1st man', race.firstMan ? race.firstMan.time : '—', race.firstMan && race.firstMan.name);
+        html += statTile('1st woman', race.firstWoman ? race.firstWoman.time : '—', race.firstWoman && race.firstWoman.name);
+      } else {
+        html += statTile('Entered', race.entered);
+        html += statTile('Men', countGender(race.rows, 'M'));
+        html += statTile('Women', countGender(race.rows, 'F'));
+      }
+      html += '</div>';
+      html += '<div class="results-toolbar">';
+      html += '<input type="search" id="q" placeholder="Search name, club or bib" value="' + esc(state.query) + '" aria-label="Search name, club or bib">';
+      html += '<select id="f-gender" aria-label="Gender">' + options(genders, state.gender, 'Gender') + '</select>';
+      html += '<select id="f-category" aria-label="Category">' + options(cats, state.category, 'Category') + '</select>';
+      html += '<select id="f-club" aria-label="Club">' + options(clubs, state.club, 'Club') + '</select>';
+      html += '</div>';
+      html += '<p class="results-count" id="visible-count"></p>';
+      html += '<div class="results-table-wrap"><table class="results-table" id="results-table">';
+      html += '<thead><tr>';
+      html += th('place', 'Position');
+      html += th('name', 'Name');
+      html += th('gender', 'Gender');
+      html += th('genderPos', 'Gender<br>Pos');
+      html += th('category', 'Category');
+      html += th('catPos', 'Cat<br>Pos');
+      html += th('club', 'Club');
+      html += th('bib', 'Bib');
+      html += th('time', 'Time');
+      html += '</tr></thead><tbody id="results-body"></tbody></table></div></section>';
+      host.innerHTML = html;
+
+      document.getElementById('q').addEventListener('input', function (e) { state.query = e.target.value; paintRows(); });
+      document.getElementById('f-gender').addEventListener('change', function (e) { state.gender = e.target.value; paintRows(); });
+      document.getElementById('f-category').addEventListener('change', function (e) { state.category = e.target.value; paintRows(); });
+      document.getElementById('f-club').addEventListener('change', function (e) { state.club = e.target.value; paintRows(); });
+      host.querySelectorAll('thead th[data-key]').forEach(function (thEl) {
+        thEl.addEventListener('click', function () {
+          var key = thEl.getAttribute('data-key');
+          if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+          else { state.sortKey = key; state.sortDir = key === 'name' || key === 'club' || key === 'category' || key === 'gender' ? 'asc' : 'asc'; }
+          renderPanels();
+        });
+      });
+      paintRows();
+    }
+
+    function th(key, label) {
+      var cls = state.sortKey === key ? ('sort-' + state.sortDir) : '';
+      return '<th data-key="' + key + '" class="' + cls + '">' + label + '</th>';
+    }
+
+    function statTile(label, value, extra) {
+      return '<div class="results-dstat">' + esc(label) + '<em>' + esc(value) + '</em>' +
+        (extra ? esc(extra) : '') + '</div>';
+    }
+
+    function countGender(rows, g) {
+      return rows.filter(function (r) { return r.gender === g; }).length;
+    }
+
+    function sortVal(row, key) {
+      if (key === 'place' || key === 'genderPos' || key === 'catPos' || key === 'bib') {
+        var n = parseInt(row[key], 10);
+        return isFinite(n) ? n : (state.sortDir === 'asc' ? 1e12 : -1);
+      }
+      if (key === 'time') return timeToSec(row.time);
+      if (key === 'name' || key === 'club' || key === 'category' || key === 'gender') {
+        return String(row[key] || '').toLowerCase();
+      }
+      return row[key];
+    }
+
+    function timeToSec(t) {
+      if (!t) return state.sortDir === 'asc' ? 1e12 : -1;
+      var parts = String(t).split(':').map(Number);
+      if (parts.some(function (n) { return !isFinite(n); })) return 1e12;
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return parts[0] || 1e12;
+    }
+
+    function filteredRows(race) {
+      var q = String(state.query || '').trim().toLowerCase();
+      var rows = (race.rows || []).filter(function (r) {
+        if (state.gender && r.gender !== state.gender) return false;
+        if (state.category && r.category !== state.category) return false;
+        if (state.club && r.club !== state.club) return false;
+        if (!q) return true;
+        return (r.name || '').toLowerCase().indexOf(q) !== -1 ||
+          (r.club || '').toLowerCase().indexOf(q) !== -1 ||
+          String(r.bib || '').toLowerCase().indexOf(q) !== -1;
+      });
+      var key = state.sortKey;
+      var dir = state.sortDir === 'desc' ? -1 : 1;
+      rows = rows.slice().sort(function (a, b) {
+        var av = sortVal(a, key), bv = sortVal(b, key);
+        if (av < bv) return -1 * dir;
+        if (av > bv) return 1 * dir;
+        return (a.place || 0) - (b.place || 0);
+      });
+      return rows;
+    }
+
+    function paintRows() {
+      var race = currentRace();
+      if (!race) return;
+      var rows = filteredRows(race);
+      var body = document.getElementById('results-body');
+      var html = rows.map(function (r) {
+        var podium = r.place === 1 || r.place === 2 || r.place === 3;
+        var sub = [];
+        if (r.catPos) sub.push('cat pos ' + r.catPos);
+        sub.push(r.club || '–');
+        if (r.bib) sub.push('bib ' + r.bib);
+        return '<tr class="' + (podium ? 'podium' : '') + (state.query ? ' result-search-highlight' : '') + '">' +
+          '<td class="results-col-pos">' + (r.place ? '<span class="results-pos">' + esc(r.place) + '</span>' : '<span class="results-muted">–</span>') + '</td>' +
+          '<td class="results-col-name">' + nameHtml(r.name) + '</td>' +
+          '<td>' + dash(r.gender) + '</td>' +
+          '<td>' + dash(r.genderPos) + '</td>' +
+          '<td class="results-col-cat" data-sub="' + esc(sub.join(' · ')) + '">' + dash(r.category) + '</td>' +
+          '<td>' + dash(r.catPos) + '</td>' +
+          '<td>' + (r.club ? esc(r.club) : '<span class="results-muted">–</span>') + '</td>' +
+          '<td>' + dash(r.bib) + '</td>' +
+          '<td class="results-col-time">' + (r.time ? esc(r.time) : '<span class="results-muted">–</span>') + '</td>' +
+          '</tr>';
+      }).join('');
+      body.innerHTML = html || '<tr><td colspan="9" class="results-empty">No runners match these filters.</td></tr>';
+      var countEl = document.getElementById('visible-count');
+      var updated = updatedText();
+      var suffix = updated ? ' · ' + updated : '';
+      if (race.hasResults) {
+        countEl.textContent = 'Showing ' + rows.length + ' of ' + race.rows.length +
+          (race.finishers ? ' · ' + race.finishers + ' finishers' : '') + suffix;
+      } else {
+        countEl.textContent = 'Showing ' + rows.length + ' of ' + race.rows.length + ' on the start list' + suffix;
+      }
+    }
+
+    setInterval(function () {
+      if (window.MOCK_DATA) return;
+      loadData(true);
+    }, 60000);
+
+    loadData();
+  </script>
+</body>
+</html>
