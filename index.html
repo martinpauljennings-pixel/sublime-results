@@ -1222,6 +1222,42 @@
       return list;
     }
 
+    // Team category for a row in a view: team points count only runners of
+    // the same category (e.g. U18 Girls only, not the U20 Girls or boys in
+    // the same race). Senior Men (Race 5), Senior Men 60+ and Senior Women
+    // (SW + FV) each score as one category.
+    function teamCategoryOf(view, row) {
+      var id = view && view.id;
+      if (id === 'sm') return 'SM';
+      if (id === 'mv60') return 'MV60+';
+      if (id === 'sw') return 'SW';
+      return String((row && row.category) || '').trim() || ('gender:' + ((row && row.gender) || ''));
+    }
+
+    // Copies the view's rows adding catTeamPos = finishing position among
+    // finishers of the same team category (non-finishers get none).
+    function withTeamCategoryPos(view) {
+      var list = ((view && view.rows) || []).map(cloneRow);
+      var finishers = list.filter(isFinisher).sort(function (a, b) {
+        return (placeNum(a) || 1e12) - (placeNum(b) || 1e12);
+      });
+      var cnt = {};
+      finishers.forEach(function (row) {
+        var k = teamCategoryOf(view, row);
+        row.teamCat = k;
+        cnt[k] = (cnt[k] || 0) + 1;
+        row.catTeamPos = cnt[k];
+      });
+      return list;
+    }
+
+    function teamCategoryHeading(cat) {
+      var c = String(cat || '');
+      if (/B$/.test(c)) return 'Boys teams';
+      if (/G$/.test(c)) return 'Girls teams';
+      return c + ' teams';
+    }
+
     function buildTeams(rows, includeB, scoreKey, teamSize) {
       scoreKey = scoreKey || 'place';
       teamSize = parseInt(teamSize, 10);
@@ -1336,42 +1372,47 @@
         host.innerHTML = '<p class="results-empty">Team results will appear once runners finish.</p>';
         return;
       }
-      var viewRows = withViewGenderPos(race.rows || []);
-      var mixed = isMixedGenderView(race) && teamSettings().scoreBoysAndGirlsSeparately;
-      if (mixed) {
-        var boys = viewRows.filter(function (r) { return r.gender === 'M'; });
-        var girls = viewRows.filter(function (r) { return r.gender === 'F'; });
-        var boyTeams = buildTeams(boys, includeB, 'genderPos', teamSize);
-        var girlTeams = buildTeams(girls, includeB, 'genderPos', teamSize);
-        var html = '';
-        html += '<section class="results-teams-section" id="teams-section-boys">';
-        html += '<h3 class="results-teams-heading">Boys teams</h3>';
-        if (boyTeams.length) html += teamsTableHtml(boyTeams, 'genderPos', 'boys');
-        else html += '<p class="results-empty">' + emptyLabel + '.</p>';
-        html += '</section>';
-        html += '<section class="results-teams-section" id="teams-section-girls">';
-        html += '<h3 class="results-teams-heading">Girls teams</h3>';
-        if (girlTeams.length) html += teamsTableHtml(girlTeams, 'genderPos', 'girls');
-        else html += '<p class="results-empty">' + emptyLabel + '.</p>';
-        html += '</section>';
+      var viewRows = withTeamCategoryPos(race);
+      var cats = [];
+      viewRows.forEach(function (r) { if (r.teamCat && cats.indexOf(r.teamCat) < 0) cats.push(r.teamCat); });
+      cats.sort(function (a, b) {
+        var ab = /B$/.test(a) ? 0 : (/G$/.test(a) ? 1 : 2), bb = /B$/.test(b) ? 0 : (/G$/.test(b) ? 1 : 2);
+        return ab - bb || String(a).localeCompare(String(b));
+      });
+      var separate = teamSettings().scoreBoysAndGirlsSeparately;
+      if (cats.length > 1 && separate) {
+        var html = '', counts = [], total = 0;
+        cats.forEach(function (cat) {
+          var catRows = viewRows.filter(function (r) { return r.teamCat === cat; });
+          var catTeams = buildTeams(catRows, includeB, 'catTeamPos', teamSize);
+          total += catTeams.length;
+          var head = teamCategoryHeading(cat);
+          var sid = /B$/.test(cat) ? 'boys' : (/G$/.test(cat) ? 'girls' : String(cat).toLowerCase().replace(/[^a-z0-9]+/g, '-'));
+          html += '<section class="results-teams-section" id="teams-section-' + esc(sid) + '">';
+          html += '<h3 class="results-teams-heading">' + esc(head) + '</h3>';
+          if (catTeams.length) html += teamsTableHtml(catTeams, 'catTeamPos', sid);
+          else html += '<p class="results-empty">' + emptyLabel + '.</p>';
+          html += '</section>';
+          counts.push(teamCountLabel(catTeams.length, head.replace(/ teams$/, '').toLowerCase()));
+        });
         host.innerHTML = html;
         if (countEl) {
-          if (!boyTeams.length && !girlTeams.length) {
-            countEl.textContent = emptyLabel + suffix;
-          } else {
-            countEl.textContent = 'Showing ' + teamCountLabel(boyTeams.length, 'boys') +
-              ' and ' + teamCountLabel(girlTeams.length, 'girls') + suffix;
-          }
+          countEl.textContent = total ? ('Showing ' + counts.join(' and ') + suffix) : (emptyLabel + suffix);
         }
         return;
       }
-      var teams = buildTeams(viewRows, includeB, 'place', teamSize);
+      if (cats.length > 1) {
+        // Boys and girls scored together (Setup says No): positions within the whole view.
+        viewRows = withViewGenderPos(race.rows || []);
+      }
+      var scoreKey = cats.length > 1 ? 'place' : 'catTeamPos';
+      var teams = buildTeams(viewRows, includeB, scoreKey, teamSize);
       if (!teams.length) {
         if (countEl) countEl.textContent = emptyLabel + suffix;
         host.innerHTML = '<p class="results-empty">' + emptyLabel + ' in this category.</p>';
         return;
       }
-      host.innerHTML = teamsTableHtml(teams, 'place');
+      host.innerHTML = teamsTableHtml(teams, scoreKey);
       if (countEl) {
         countEl.textContent = 'Showing ' + teamCountLabel(teams.length) + suffix;
       }
@@ -1481,16 +1522,16 @@
     ];
 
     var TEAM_PRIZES = {
-      'u14b team': { raceId: 2, view: 'U14 Boys & Girls', gender: 'M' },
-      'u14g team': { raceId: 2, view: 'U14 Boys & Girls', gender: 'F' },
-      'u16b team': { raceId: 3, view: 'U16 Boys & Girls', gender: 'M' },
-      'u16g team': { raceId: 3, view: 'U16 Boys & Girls', gender: 'F' },
-      'u18b team': { raceId: 4, view: 'U18 Boys & Girls', gender: 'M', cats: ['U18B', 'U18G'] },
-      'u18g team': { raceId: 4, view: 'U18 Boys & Girls', gender: 'F', cats: ['U18B', 'U18G'] },
-      'u20g team': { raceId: 4, view: 'U20 Girls', gender: 'F', cats: ['U20G'] },
-      'u20b team': { raceId: 6, view: 'U20 Boys', gender: 'M', cats: ['U20B'] },
-      'senior men team': { raceId: 5, view: 'Senior Men (Age 20 - 59)', gender: 'M' },
-      'senior women team': { raceId: 6, view: 'Senior Women (Age 20+)', gender: 'F', catPrefix: ['SW', 'FV'] }
+      'u14b team': { raceId: 2, view: 'U14 Boys & Girls', cats: ['U14B'] },
+      'u14g team': { raceId: 2, view: 'U14 Boys & Girls', cats: ['U14G'] },
+      'u16b team': { raceId: 3, view: 'U16 Boys & Girls', cats: ['U16B'] },
+      'u16g team': { raceId: 3, view: 'U16 Boys & Girls', cats: ['U16G'] },
+      'u18b team': { raceId: 4, view: 'U18 Boys & Girls', cats: ['U18B'] },
+      'u18g team': { raceId: 4, view: 'U18 Boys & Girls', cats: ['U18G'] },
+      'u20g team': { raceId: 4, view: 'U20 Girls', cats: ['U20G'] },
+      'u20b team': { raceId: 6, view: 'U20 Boys', cats: ['U20B'] },
+      'senior men team': { raceId: 5, view: 'Senior Men (Age 20 - 59)' },
+      'senior women team': { raceId: 6, view: 'Senior Women (Age 20+)', catPrefix: ['SW', 'FV'] }
     };
 
     function prizeIsFinisher(r) {
@@ -1506,12 +1547,7 @@
         if (def.catPrefix && !def.catPrefix.some(function (p) { return c.indexOf(p) === 0; })) return false;
         return true;
       }).map(cloneRow).sort(function (a, b) { return parseInt(a.place, 10) - parseInt(b.place, 10); });
-      var g = {};
-      list.forEach(function (r) {
-        var k = r.gender || '';
-        g[k] = (g[k] || 0) + 1;
-        r.genderPos = g[k];
-      });
+      list.forEach(function (r, i) { r.catTeamPos = i + 1; });
       return list;
     }
 
@@ -1525,10 +1561,10 @@
       });
       var teams = [];
       order.forEach(function (club) {
-        var m = groups[club].slice().sort(function (a, b) { return a.genderPos - b.genderPos; });
+        var m = groups[club].slice().sort(function (a, b) { return a.catTeamPos - b.catTeamPos; });
         if (m.length < teamSize) return;
         var sc = m.slice(0, teamSize);
-        var scores = sc.map(function (s) { return s.genderPos; });
+        var scores = sc.map(function (s) { return s.catTeamPos; });
         teams.push({ club: club, points: scores.reduce(function (t, v) { return t + v; }, 0), scores: scores, scorers: sc });
       });
       teams.sort(function (a, b) {
@@ -1557,11 +1593,11 @@
               if (!def) return item;
               var size = scorersForView({ name: def.view });
               item.scorers = size;
-              var rows = prizeViewRows(raceById(races, def.raceId), def).filter(function (r) { return r.gender === def.gender; });
+              var rows = prizeViewRows(raceById(races, def.raceId), def);
               prizeATeams(rows, size).slice(0, 3).forEach(function (t, i) {
                 item.places.push({
                   pos: i + 1, club: t.club, points: t.points,
-                  scorers: t.scorers.map(function (s) { return { name: s.name, bib: s.bib, pos: s.genderPos, time: s.time }; })
+                  scorers: t.scorers.map(function (s) { return { name: s.name, bib: s.bib, pos: s.catTeamPos, time: s.time }; })
                 });
               });
             } else {
