@@ -150,7 +150,7 @@
     }
     .results-hero-rule { height: 6px; background: var(--results-accent); }
 
-    /* Race pills */
+    /* Category pills */
     .results-tabs {
       position: sticky;
       top: 0;
@@ -224,7 +224,7 @@
       color: var(--results-ink);
     }
 
-    /* Race section */
+    /* Category section */
     .results-body { padding-bottom: 40px; }
     .results-panel { padding-top: 30px; }
     .results-panel[hidden] { display: none; }
@@ -501,10 +501,10 @@
       <div class="results-hero-rule" aria-hidden="true"></div>
     </header>
 
-    <nav class="results-tabs" aria-label="Race">
+    <nav class="results-tabs" aria-label="Category">
       <div class="results-tabs-inner results-shell-inner">
-        <span class="results-tabs-label" id="results-race-label">Race</span>
-        <div class="results-seg" role="tablist" aria-labelledby="results-race-label" id="race-tabs"></div>
+        <span class="results-tabs-label" id="results-cat-label">Category</span>
+        <div class="results-seg" role="tablist" aria-labelledby="results-cat-label" id="race-tabs"></div>
       </div>
     </nav>
 
@@ -530,6 +530,7 @@
   <script>
     var state = {
       data: null,
+      views: [],
       activeId: null,
       query: '',
       gender: '',
@@ -538,6 +539,123 @@
       sortKey: 'place',
       sortDir: 'asc'
     };
+
+    var VIEW_DEFS = [
+      { id: 'u12',  label: 'U12 Boys & Girls',           raceId: 1 },
+      { id: 'u14',  label: 'U14 Boys & Girls',           raceId: 2 },
+      { id: 'u16',  label: 'U16 Boys & Girls',           raceId: 3 },
+      { id: 'u18',  label: 'U18 Boys & Girls',           raceId: 4, split: true, match: function (row) { var c = row.category; return c === 'U18B' || c === 'U18G'; } },
+      { id: 'u20g', label: 'U20 Girls',                  raceId: 4, split: true, match: function (row) { return row.category === 'U20G'; } },
+      { id: 'sm',   label: 'Senior Men (Age 20 - 59)',   raceId: 5 },
+      { id: 'mv60', label: 'Senior Men (Age 60+)',       raceId: 6, split: true, match: function (row) { return String(row.category || '').indexOf('MV') === 0; } },
+      { id: 'sw',   label: 'Senior Women (Age 20+)',     raceId: 6, split: true, match: function (row) { var c = String(row.category || ''); return c === 'SW' || c.indexOf('FV') === 0; } },
+      { id: 'u20b', label: 'U20 Boys',                   raceId: 6, split: true, match: function (row) { return row.category === 'U20B'; } }
+    ];
+
+    function raceById(races, id) {
+      for (var i = 0; i < races.length; i++) {
+        if (String(races[i].id) === String(id)) return races[i];
+      }
+      return null;
+    }
+
+    function placeNum(row) {
+      var n = parseInt(row && row.place, 10);
+      return isFinite(n) ? n : null;
+    }
+
+    function isFinisher(row) {
+      return placeNum(row) != null || !!(row && row.time);
+    }
+
+    function cloneRow(row) {
+      var out = {}, k;
+      for (k in row) { if (Object.prototype.hasOwnProperty.call(row, k)) out[k] = row[k]; }
+      return out;
+    }
+
+    function firstOfGender(rows, gender) {
+      var list = rows.filter(function (r) { return isFinisher(r) && r.gender === gender; })
+        .slice()
+        .sort(function (a, b) { return (placeNum(a) || 1e12) - (placeNum(b) || 1e12); });
+      if (!list.length) return null;
+      return { name: list[0].name, time: list[0].time };
+    }
+
+    function recomputeSplitRows(rows) {
+      var viewRows = rows.map(cloneRow);
+      var finishers = viewRows.filter(isFinisher).sort(function (a, b) {
+        return (placeNum(a) || 1e12) - (placeNum(b) || 1e12);
+      });
+      var gCount = {};
+      finishers.forEach(function (row, i) {
+        row.place = i + 1;
+        var g = row.gender || '';
+        gCount[g] = (gCount[g] || 0) + 1;
+        row.genderPos = gCount[g];
+      });
+      return viewRows;
+    }
+
+    function buildView(def, race) {
+      race = race || { rows: [], hasResults: false, start: '', distance: '', entered: 0, finishers: 0, men: 0, women: 0, firstMan: null, firstWoman: null };
+      var raw = race.rows || [];
+      var filtered = def.match ? raw.filter(def.match) : raw.slice();
+      if (!def.split) {
+        return {
+          id: def.id,
+          tab: def.label,
+          name: def.label,
+          start: race.start,
+          distance: race.distance,
+          hasResults: !!race.hasResults,
+          entered: race.entered,
+          finishers: race.finishers,
+          men: race.men,
+          women: race.women,
+          firstMan: race.firstMan,
+          firstWoman: race.firstWoman,
+          rows: filtered
+        };
+      }
+      var viewRows = recomputeSplitRows(filtered);
+      var finisherRows = viewRows.filter(isFinisher);
+      var hasResults = !!race.hasResults;
+      return {
+        id: def.id,
+        tab: def.label,
+        name: def.label,
+        start: race.start,
+        distance: race.distance,
+        hasResults: hasResults,
+        entered: viewRows.length,
+        finishers: finisherRows.length,
+        men: hasResults ? finisherRows.filter(function (r) { return r.gender === 'M'; }).length : 0,
+        women: hasResults ? finisherRows.filter(function (r) { return r.gender === 'F'; }).length : 0,
+        firstMan: hasResults ? firstOfGender(viewRows, 'M') : null,
+        firstWoman: hasResults ? firstOfGender(viewRows, 'F') : null,
+        rows: viewRows
+      };
+    }
+
+    function buildViews(data) {
+      var races = (data && data.races) || [];
+      return VIEW_DEFS.map(function (def) { return buildView(def, raceById(races, def.raceId)); });
+    }
+
+    function viewById(id) {
+      var views = state.views || [];
+      for (var i = 0; i < views.length; i++) {
+        if (String(views[i].id) === String(id)) return views[i];
+      }
+      return null;
+    }
+
+    function defaultViewId(views) {
+      if (!views || !views.length) return null;
+      var withResults = views.filter(function (v) { return v.hasResults; });
+      return (withResults[0] || views[0]).id;
+    }
 
     function esc(s) {
       return String(s == null ? '' : s)
@@ -589,7 +707,8 @@
         var keepId = state.activeId;
         var q = state.query, g = state.gender, c = state.category, cl = state.club, sk = state.sortKey, sd = state.sortDir;
         state.data = data;
-        state.activeId = keepId;
+        state.views = buildViews(data);
+        state.activeId = viewById(keepId) ? keepId : defaultViewId(state.views);
         state.query = q; state.gender = g; state.category = c; state.club = cl;
         state.sortKey = sk; state.sortDir = sd;
         renderHero();
@@ -631,9 +750,9 @@
 
     function render(data) {
       state.data = data;
-      if (!state.activeId && data.races && data.races.length) {
-        var withResults = data.races.filter(function (r) { return r.hasResults; });
-        state.activeId = (withResults[0] || data.races[0]).id;
+      state.views = buildViews(data);
+      if (!state.activeId || !viewById(state.activeId)) {
+        state.activeId = defaultViewId(state.views);
       }
       document.getElementById('event-title').textContent = data.title || '2026 - Eastern AA Cross Country Championships';
       document.getElementById('event-location').textContent = data.location || 'Horseheath Racecourse';
@@ -667,7 +786,7 @@
     }
 
     function renderTabs() {
-      var races = state.data.races || [];
+      var races = state.views || [];
       var html = races.map(function (r) {
         var selected = String(r.id) === String(state.activeId);
         var count = r.hasResults ? r.finishers : r.entered;
@@ -699,11 +818,7 @@
     function renderUpdated() {}
 
     function currentRace() {
-      var races = (state.data && state.data.races) || [];
-      for (var i = 0; i < races.length; i++) {
-        if (String(races[i].id) === String(state.activeId)) return races[i];
-      }
-      return races[0] || null;
+      return viewById(state.activeId) || (state.views && state.views[0]) || null;
     }
 
     function selectRace(id) {
