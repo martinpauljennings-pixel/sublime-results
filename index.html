@@ -806,7 +806,7 @@
         state.query = q; state.gender = g; state.category = c; state.club = cl;
         state.sortKey = sk; state.sortDir = sd;
         state.viewMode = vm || 'individuals';
-        state.includeBTeams = !!incB;
+        state.includeBTeams = teamSettings().allowBTeams ? !!incB : false;
         renderHero();
         renderTabs();
         renderUpdated();
@@ -847,6 +847,8 @@
     function render(data) {
       state.data = data;
       state.views = buildViews(data);
+      var ts = teamSettings();
+      state.includeBTeams = !!(ts.allowBTeams && ts.showBTeamsByDefault);
       if (!state.activeId || !viewById(state.activeId)) {
         state.activeId = defaultViewId(state.views);
       }
@@ -990,7 +992,7 @@
       var teamsMode = state.viewMode === 'teams';
       if (teamsMode) {
         var finisherCount = (race.rows || []).filter(isFinisher).length;
-        if (finisherCount) {
+        if (finisherCount && teamSettings().allowBTeams) {
           html += '<div class="results-toggle-row">';
           html += '<label class="results-switch" for="include-b-teams">';
           html += '<input type="checkbox" id="include-b-teams"' + (state.includeBTeams ? ' checked' : '') + '>';
@@ -1073,6 +1075,46 @@
         ' tabindex="' + (selected ? '0' : '-1') + '">' + esc(label) + '</button>';
     }
 
+    function defaultTeamSettings() {
+      return {
+        scorersPerTeam: 3,
+        allowBTeams: true,
+        showBTeamsByDefault: false,
+        scoreBoysAndGirlsSeparately: true,
+        scorersByCategory: {}
+      };
+    }
+
+    function teamSettings() {
+      var d = defaultTeamSettings();
+      var ts = state.data && state.data.teamSettings;
+      if (!ts || typeof ts !== 'object') return d;
+      var n = parseInt(ts.scorersPerTeam, 10);
+      if (isFinite(n) && n > 0) d.scorersPerTeam = n;
+      if (ts.allowBTeams === false || ts.allowBTeams === true) d.allowBTeams = !!ts.allowBTeams;
+      if (ts.showBTeamsByDefault === false || ts.showBTeamsByDefault === true) d.showBTeamsByDefault = !!ts.showBTeamsByDefault;
+      if (ts.scoreBoysAndGirlsSeparately === false || ts.scoreBoysAndGirlsSeparately === true) {
+        d.scoreBoysAndGirlsSeparately = !!ts.scoreBoysAndGirlsSeparately;
+      }
+      if (ts.scorersByCategory && typeof ts.scorersByCategory === 'object') {
+        d.scorersByCategory = ts.scorersByCategory;
+      }
+      return d;
+    }
+
+    function scorersForView(view) {
+      var ts = teamSettings();
+      var name = view && (view.name || view.tab);
+      var map = ts.scorersByCategory || {};
+      var n = name != null && map[name] != null ? parseInt(map[name], 10) : NaN;
+      if (isFinite(n) && n > 0) return n;
+      return ts.scorersPerTeam;
+    }
+
+    function includeBTeamsValue() {
+      return teamSettings().allowBTeams && !!state.includeBTeams;
+    }
+
     function clubKey(club) {
       return String(club || '').trim();
     }
@@ -1118,8 +1160,10 @@
       return list;
     }
 
-    function buildTeams(rows, includeB, scoreKey) {
+    function buildTeams(rows, includeB, scoreKey, teamSize) {
       scoreKey = scoreKey || 'place';
+      teamSize = parseInt(teamSize, 10);
+      if (!isFinite(teamSize) || teamSize < 1) teamSize = 3;
       var groups = {}, order = [];
       (rows || []).forEach(function (r) {
         if (!isFinisher(r)) return;
@@ -1137,34 +1181,43 @@
           return (scoreNum(a, scoreKey) || 1e12) - (scoreNum(b, scoreKey) || 1e12);
         });
         var i = 0, idx = 0;
-        while (i + 3 <= members.length) {
-          var scorers = members.slice(i, i + 3);
+        while (i + teamSize <= members.length) {
+          var scorers = members.slice(i, i + teamSize);
           var isA = idx === 0;
           if (includeB || isA) {
-            var first = scoreNum(scorers[0], scoreKey);
-            var second = scoreNum(scorers[1], scoreKey);
-            var third = scoreNum(scorers[2], scoreKey);
-            teams.push({
-              club: club,
-              name: teamLabel(club, idx),
-              isA: isA,
-              scoreKey: scoreKey,
-              points: first + second + third,
-              third: third,
-              first: first,
-              second: second,
-              scorers: scorers
-            });
+            var scores = scorers.map(function (s) { return scoreNum(s, scoreKey); });
+            var ok = true, points = 0, si;
+            for (si = 0; si < scores.length; si++) {
+              if (scores[si] == null) { ok = false; break; }
+              points += scores[si];
+            }
+            if (ok) {
+              teams.push({
+                club: club,
+                name: teamLabel(club, idx),
+                isA: isA,
+                scoreKey: scoreKey,
+                points: points,
+                scores: scores,
+                first: scores[0],
+                second: scores.length > 1 ? scores[1] : scores[0],
+                third: scores[scores.length - 1],
+                scorers: scorers
+              });
+            }
           }
           idx += 1;
-          i += 3;
+          i += teamSize;
         }
       });
       teams.sort(function (a, b) {
         if (a.points !== b.points) return a.points - b.points;
-        if (a.third !== b.third) return a.third - b.third;
-        if (a.second !== b.second) return a.second - b.second;
-        if (a.first !== b.first) return a.first - b.first;
+        var len = Math.max(a.scores.length, b.scores.length), k, av, bv;
+        for (k = len - 1; k >= 0; k--) {
+          av = a.scores[k];
+          bv = b.scores[k];
+          if (av !== bv) return (av == null ? 1e12 : av) - (bv == null ? 1e12 : bv);
+        }
         return String(a.name).localeCompare(String(b.name));
       });
       teams.forEach(function (t, n) { t.place = n + 1; });
@@ -1213,33 +1266,36 @@
       var finishers = (race.rows || []).filter(isFinisher);
       var updated = updatedText();
       var suffix = updated ? ' · ' + updated : '';
+      var teamSize = scorersForView(race);
+      var includeB = includeBTeamsValue();
+      var emptyLabel = 'No complete teams of ' + teamSize;
       if (!finishers.length) {
         if (countEl) countEl.textContent = '';
         host.innerHTML = '<p class="results-empty">Team results will appear once runners finish.</p>';
         return;
       }
       var viewRows = withViewGenderPos(race.rows || []);
-      var mixed = isMixedGenderView(race);
+      var mixed = isMixedGenderView(race) && teamSettings().scoreBoysAndGirlsSeparately;
       if (mixed) {
         var boys = viewRows.filter(function (r) { return r.gender === 'M'; });
         var girls = viewRows.filter(function (r) { return r.gender === 'F'; });
-        var boyTeams = buildTeams(boys, state.includeBTeams, 'genderPos');
-        var girlTeams = buildTeams(girls, state.includeBTeams, 'genderPos');
+        var boyTeams = buildTeams(boys, includeB, 'genderPos', teamSize);
+        var girlTeams = buildTeams(girls, includeB, 'genderPos', teamSize);
         var html = '';
         html += '<section class="results-teams-section" id="teams-section-boys">';
         html += '<h3 class="results-teams-heading">Boys teams</h3>';
         if (boyTeams.length) html += teamsTableHtml(boyTeams, 'genderPos', 'boys');
-        else html += '<p class="results-empty">No complete teams of 3.</p>';
+        else html += '<p class="results-empty">' + emptyLabel + '.</p>';
         html += '</section>';
         html += '<section class="results-teams-section" id="teams-section-girls">';
         html += '<h3 class="results-teams-heading">Girls teams</h3>';
         if (girlTeams.length) html += teamsTableHtml(girlTeams, 'genderPos', 'girls');
-        else html += '<p class="results-empty">No complete teams of 3.</p>';
+        else html += '<p class="results-empty">' + emptyLabel + '.</p>';
         html += '</section>';
         host.innerHTML = html;
         if (countEl) {
           if (!boyTeams.length && !girlTeams.length) {
-            countEl.textContent = 'No complete teams of 3' + suffix;
+            countEl.textContent = emptyLabel + suffix;
           } else {
             countEl.textContent = 'Showing ' + teamCountLabel(boyTeams.length, 'boys') +
               ' and ' + teamCountLabel(girlTeams.length, 'girls') + suffix;
@@ -1247,10 +1303,10 @@
         }
         return;
       }
-      var teams = buildTeams(viewRows, state.includeBTeams, 'place');
+      var teams = buildTeams(viewRows, includeB, 'place', teamSize);
       if (!teams.length) {
-        if (countEl) countEl.textContent = 'No complete teams of 3' + suffix;
-        host.innerHTML = '<p class="results-empty">No complete teams of 3 in this category.</p>';
+        if (countEl) countEl.textContent = emptyLabel + suffix;
+        host.innerHTML = '<p class="results-empty">' + emptyLabel + ' in this category.</p>';
         return;
       }
       host.innerHTML = teamsTableHtml(teams, 'place');
