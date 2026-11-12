@@ -268,6 +268,85 @@
     }
     .results-count { font-size: 13px; color: var(--results-grey); margin: 8px 0; }
 
+    .results-view-tabs { margin: 0 0 14px; }
+    .results-seg-mode {
+      display: inline-flex;
+      flex-wrap: wrap;
+      width: auto;
+      max-width: 100%;
+    }
+    .results-seg-mode [role=tab] {
+      font-size: 13px;
+      padding: 6px 14px;
+      min-height: 32px;
+    }
+    .results-toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 12px;
+    }
+    .results-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      font: 600 13px var(--results-heading-font);
+      color: var(--results-ink);
+      user-select: none;
+    }
+    .results-switch input {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .results-switch-ui {
+      width: 40px;
+      height: 22px;
+      background: #c8cdc9;
+      border-radius: 999px;
+      position: relative;
+      flex: 0 0 auto;
+      transition: background .15s ease;
+    }
+    .results-switch-ui::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+      transition: transform .15s ease;
+    }
+    .results-switch input:checked + .results-switch-ui {
+      background: var(--results-accent);
+    }
+    .results-switch input:checked + .results-switch-ui::after {
+      transform: translateX(18px);
+    }
+    .results-switch input:focus-visible + .results-switch-ui {
+      outline: 3px solid var(--results-accent);
+      outline-offset: 2px;
+    }
+    table.results-table.results-table-static thead th {
+      cursor: default;
+    }
+    table.results-table.results-table-static thead th::after { content: none; }
+    .results-pts-unit { display: none; font-weight: 500; font-size: 12px; color: var(--results-grey); margin-left: 4px; }
+    .results-scorers { font-variant-numeric: lining-nums tabular-nums; }
+    .results-teams-section { margin: 0 0 24px; }
+    .results-teams-section:last-child { margin-bottom: 0; }
+    .results-teams-heading {
+      font: 600 18px var(--results-heading-font);
+      color: var(--results-ink);
+      margin: 0 0 10px;
+    }
+
     /* Toolbar */
     .results-toolbar {
       display: flex;
@@ -467,6 +546,18 @@
       table.results-table tbody tr > td.results-col-time { display: block; grid-area: time; text-align: right; font-size: 15px; }
       table.results-table tbody tr > td.results-col-cat { display: block; grid-area: sub; font-size: 12px; color: var(--results-grey); }
       table.results-table tbody tr:last-child { border-bottom: 1px solid var(--results-rule); }
+
+      .results-seg-mode [role=tab] { padding: 5px 12px; font-size: 12px; min-height: 28px; }
+      .results-pts-unit { display: inline; }
+      table.results-table.results-teams tbody tr > td.results-col-scorers {
+        display: block;
+        grid-area: sub;
+        font-size: 12px;
+        color: var(--results-grey);
+      }
+      table.results-table.results-teams tbody tr > td.results-col-time {
+        font-size: 15px;
+      }
     }
   </style>
 </head>
@@ -537,7 +628,9 @@
       category: '',
       club: '',
       sortKey: 'place',
-      sortDir: 'asc'
+      sortDir: 'asc',
+      viewMode: 'individuals',
+      includeBTeams: false
     };
 
     var VIEW_DEFS = [
@@ -706,11 +799,14 @@
       if (keepFilters && state.data) {
         var keepId = state.activeId;
         var q = state.query, g = state.gender, c = state.category, cl = state.club, sk = state.sortKey, sd = state.sortDir;
+        var vm = state.viewMode, incB = state.includeBTeams;
         state.data = data;
         state.views = buildViews(data);
         state.activeId = viewById(keepId) ? keepId : defaultViewId(state.views);
         state.query = q; state.gender = g; state.category = c; state.club = cl;
         state.sortKey = sk; state.sortDir = sd;
+        state.viewMode = vm || 'individuals';
+        state.includeBTeams = !!incB;
         renderHero();
         renderTabs();
         renderUpdated();
@@ -873,6 +969,11 @@
       if (start) html += '<p class="results-start">' + esc(start) + '</p>';
       html += '<span class="results-mode">' + esc(mode) + '</span>';
       html += '</div>';
+      html += '<div class="results-view-tabs">';
+      html += '<div class="results-seg results-seg-mode" role="tablist" aria-label="Individuals or teams">';
+      html += modeTabBtn('individuals', 'Individuals');
+      html += modeTabBtn('teams', 'Teams');
+      html += '</div></div>';
       html += '<div class="results-dstats">';
       if (race.hasResults) {
         html += statTile('Finishers', race.finishers);
@@ -886,46 +987,276 @@
         html += statTile('Women', countGender(race.rows, 'F'));
       }
       html += '</div>';
-      html += '<div class="results-toolbar">';
-      html += '<input type="search" id="q" placeholder="Search name, club or bib" value="' + esc(state.query) + '" aria-label="Search name, club or bib">';
-      html += '<select id="f-gender" aria-label="Gender">' + options(genders, state.gender, 'Gender') + '</select>';
-      html += '<select id="f-category" aria-label="Category">' + options(cats, state.category, 'Category') + '</select>';
-      html += '<select id="f-club" aria-label="Club">' + options(clubs, state.club, 'Club') + '</select>';
-      var sortOpts = [['place','asc','Position'],['name','asc','Name A to Z'],['name','desc','Name Z to A'],['gender','asc','Gender'],['genderPos','asc','Gender position'],['category','asc','Category'],['catPos','asc','Category position'],['club','asc','Club A to Z'],['bib','asc','Bib'],['time','asc','Time (fastest first)'],['time','desc','Time (slowest first)']];
-      var curSort = state.sortKey + '|' + state.sortDir;
-      html += '<select id="f-sort" class="results-sort" aria-label="Sort by">';
-      sortOpts.forEach(function (o) { var v = o[0] + '|' + o[1]; html += '<option value="' + v + '"' + (v === curSort ? ' selected' : '') + '>Sort by: ' + o[2] + '</option>'; });
-      html += '</select>';
-      html += '</div>';
-      html += '<p class="results-count" id="visible-count"></p>';
-      html += '<div class="results-table-wrap"><table class="results-table" id="results-table">';
-      html += '<thead><tr>';
-      html += th('place', 'Position');
-      html += th('name', 'Name');
-      html += th('gender', 'Gender');
-      html += th('genderPos', 'Gender<br>Pos');
-      html += th('category', 'Category');
-      html += th('catPos', 'Cat<br>Pos');
-      html += th('club', 'Club');
-      html += th('bib', 'Bib');
-      html += th('time', 'Time');
-      html += '</tr></thead><tbody id="results-body"></tbody></table></div></section>';
+      var teamsMode = state.viewMode === 'teams';
+      if (teamsMode) {
+        var finisherCount = (race.rows || []).filter(isFinisher).length;
+        if (finisherCount) {
+          html += '<div class="results-toggle-row">';
+          html += '<label class="results-switch" for="include-b-teams">';
+          html += '<input type="checkbox" id="include-b-teams"' + (state.includeBTeams ? ' checked' : '') + '>';
+          html += '<span class="results-switch-ui" aria-hidden="true"></span>';
+          html += 'Include B, C, D teams';
+          html += '</label>';
+          html += '</div>';
+        }
+        html += '<p class="results-count" id="visible-count"></p>';
+        html += '<div id="teams-content"></div>';
+      } else {
+        html += '<div class="results-toolbar">';
+        html += '<input type="search" id="q" placeholder="Search name, club or bib" value="' + esc(state.query) + '" aria-label="Search name, club or bib">';
+        html += '<select id="f-gender" aria-label="Gender">' + options(genders, state.gender, 'Gender') + '</select>';
+        html += '<select id="f-category" aria-label="Category">' + options(cats, state.category, 'Category') + '</select>';
+        html += '<select id="f-club" aria-label="Club">' + options(clubs, state.club, 'Club') + '</select>';
+        var sortOpts = [['place','asc','Position'],['name','asc','Name A to Z'],['name','desc','Name Z to A'],['gender','asc','Gender'],['genderPos','asc','Gender position'],['category','asc','Category'],['catPos','asc','Category position'],['club','asc','Club A to Z'],['bib','asc','Bib'],['time','asc','Time (fastest first)'],['time','desc','Time (slowest first)']];
+        var curSort = state.sortKey + '|' + state.sortDir;
+        html += '<select id="f-sort" class="results-sort" aria-label="Sort by">';
+        sortOpts.forEach(function (o) { var v = o[0] + '|' + o[1]; html += '<option value="' + v + '"' + (v === curSort ? ' selected' : '') + '>Sort by: ' + o[2] + '</option>'; });
+        html += '</select>';
+        html += '</div>';
+        html += '<p class="results-count" id="visible-count"></p>';
+        html += '<div class="results-table-wrap"><table class="results-table" id="results-table">';
+        html += '<thead><tr>';
+        html += th('place', 'Position');
+        html += th('name', 'Name');
+        html += th('gender', 'Gender');
+        html += th('genderPos', 'Gender<br>Pos');
+        html += th('category', 'Category');
+        html += th('catPos', 'Cat<br>Pos');
+        html += th('club', 'Club');
+        html += th('bib', 'Bib');
+        html += th('time', 'Time');
+        html += '</tr></thead><tbody id="results-body"></tbody></table></div>';
+      }
+      html += '</section>';
       host.innerHTML = html;
 
-      document.getElementById('q').addEventListener('input', function (e) { state.query = e.target.value; paintRows(); });
-      document.getElementById('f-gender').addEventListener('change', function (e) { state.gender = e.target.value; paintRows(); });
-      document.getElementById('f-category').addEventListener('change', function (e) { state.category = e.target.value; paintRows(); });
-      document.getElementById('f-sort').addEventListener('change', function (e) { var v = e.target.value.split('|'); state.sortKey = v[0]; state.sortDir = v[1]; renderPanels(); });
-      document.getElementById('f-club').addEventListener('change', function (e) { state.club = e.target.value; paintRows(); });
-      host.querySelectorAll('thead th[data-key]').forEach(function (thEl) {
-        thEl.addEventListener('click', function () {
-          var key = thEl.getAttribute('data-key');
-          if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-          else { state.sortKey = key; state.sortDir = key === 'name' || key === 'club' || key === 'category' || key === 'gender' ? 'asc' : 'asc'; }
+      host.querySelectorAll('.results-seg-mode [role=tab]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var next = btn.getAttribute('data-mode');
+          if (state.viewMode === next) return;
+          state.viewMode = next;
           renderPanels();
         });
       });
-      paintRows();
+      if (teamsMode) {
+        var tog = document.getElementById('include-b-teams');
+        if (tog) {
+          tog.addEventListener('change', function (e) {
+            state.includeBTeams = !!e.target.checked;
+            paintTeams();
+          });
+        }
+        paintTeams();
+      } else {
+        document.getElementById('q').addEventListener('input', function (e) { state.query = e.target.value; paintRows(); });
+        document.getElementById('f-gender').addEventListener('change', function (e) { state.gender = e.target.value; paintRows(); });
+        document.getElementById('f-category').addEventListener('change', function (e) { state.category = e.target.value; paintRows(); });
+        document.getElementById('f-sort').addEventListener('change', function (e) { var v = e.target.value.split('|'); state.sortKey = v[0]; state.sortDir = v[1]; renderPanels(); });
+        document.getElementById('f-club').addEventListener('change', function (e) { state.club = e.target.value; paintRows(); });
+        host.querySelectorAll('thead th[data-key]').forEach(function (thEl) {
+          thEl.addEventListener('click', function () {
+            var key = thEl.getAttribute('data-key');
+            if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+            else { state.sortKey = key; state.sortDir = key === 'name' || key === 'club' || key === 'category' || key === 'gender' ? 'asc' : 'asc'; }
+            renderPanels();
+          });
+        });
+        paintRows();
+      }
+    }
+
+    function modeTabBtn(mode, label) {
+      var selected = state.viewMode === mode;
+      return '<button type="button" role="tab" id="view-' + mode + '"' +
+        ' data-mode="' + mode + '"' +
+        ' aria-selected="' + (selected ? 'true' : 'false') + '"' +
+        ' tabindex="' + (selected ? '0' : '-1') + '">' + esc(label) + '</button>';
+    }
+
+    function clubKey(club) {
+      return String(club || '').trim();
+    }
+
+    function isTeamClub(club) {
+      var c = clubKey(club);
+      if (!c) return false;
+      if (c.toLowerCase() === 'unattached') return false;
+      return true;
+    }
+
+    function teamLabel(club, index) {
+      if (index <= 0) return club;
+      if (index < 26) return club + ' ' + String.fromCharCode(65 + index);
+      return club + ' ' + (index + 1);
+    }
+
+    function scoreNum(row, key) {
+      var n = parseInt(row && row[key], 10);
+      return isFinite(n) ? n : null;
+    }
+
+    function rowsHaveGender(rows, gender) {
+      return (rows || []).some(function (r) { return r.gender === gender; });
+    }
+
+    function isMixedGenderView(race) {
+      var rows = (race && race.rows) || [];
+      return rowsHaveGender(rows, 'M') && rowsHaveGender(rows, 'F');
+    }
+
+    function withViewGenderPos(rows) {
+      var list = (rows || []).map(cloneRow);
+      var finishers = list.filter(isFinisher).sort(function (a, b) {
+        return (placeNum(a) || 1e12) - (placeNum(b) || 1e12);
+      });
+      var gCount = {};
+      finishers.forEach(function (row) {
+        var g = row.gender || '';
+        gCount[g] = (gCount[g] || 0) + 1;
+        row.genderPos = gCount[g];
+      });
+      return list;
+    }
+
+    function buildTeams(rows, includeB, scoreKey) {
+      scoreKey = scoreKey || 'place';
+      var groups = {}, order = [];
+      (rows || []).forEach(function (r) {
+        if (!isFinisher(r)) return;
+        var club = clubKey(r.club);
+        if (!isTeamClub(club)) return;
+        if (!groups[club]) {
+          groups[club] = [];
+          order.push(club);
+        }
+        groups[club].push(r);
+      });
+      var teams = [];
+      order.forEach(function (club) {
+        var members = groups[club].slice().sort(function (a, b) {
+          return (scoreNum(a, scoreKey) || 1e12) - (scoreNum(b, scoreKey) || 1e12);
+        });
+        var i = 0, idx = 0;
+        while (i + 3 <= members.length) {
+          var scorers = members.slice(i, i + 3);
+          var isA = idx === 0;
+          if (includeB || isA) {
+            var first = scoreNum(scorers[0], scoreKey);
+            var second = scoreNum(scorers[1], scoreKey);
+            var third = scoreNum(scorers[2], scoreKey);
+            teams.push({
+              club: club,
+              name: teamLabel(club, idx),
+              isA: isA,
+              scoreKey: scoreKey,
+              points: first + second + third,
+              third: third,
+              first: first,
+              second: second,
+              scorers: scorers
+            });
+          }
+          idx += 1;
+          i += 3;
+        }
+      });
+      teams.sort(function (a, b) {
+        if (a.points !== b.points) return a.points - b.points;
+        if (a.third !== b.third) return a.third - b.third;
+        if (a.second !== b.second) return a.second - b.second;
+        if (a.first !== b.first) return a.first - b.first;
+        return String(a.name).localeCompare(String(b.name));
+      });
+      teams.forEach(function (t, n) { t.place = n + 1; });
+      return teams;
+    }
+
+    function scorerText(s, scoreKey) {
+      var pos = scoreNum(s, scoreKey || 'place');
+      return nameHtml(s.name) + ' (' + esc(pos == null ? '–' : pos) + ')';
+    }
+
+    function teamsTableHtml(teams, scoreKey, idSuffix) {
+      var tableId = idSuffix ? 'teams-table-' + idSuffix : 'teams-table';
+      var bodyId = idSuffix ? 'teams-body-' + idSuffix : 'teams-body';
+      var html = '<div class="results-table-wrap"><table class="results-table results-table-static results-teams" id="' + tableId + '">';
+      html += '<thead><tr>';
+      html += '<th>Team position</th>';
+      html += '<th>Team</th>';
+      html += '<th>Points</th>';
+      html += '<th>Scorers</th>';
+      html += '</tr></thead><tbody id="' + bodyId + '">';
+      html += teams.map(function (t) {
+        var podium = t.place === 1 || t.place === 2 || t.place === 3;
+        var scorers = t.scorers.map(function (s) { return scorerText(s, scoreKey); }).join(', ');
+        return '<tr class="' + (podium ? 'podium' : '') + '">' +
+          '<td class="results-col-pos"><span class="results-pos">' + esc(t.place) + '</span></td>' +
+          '<td class="results-col-name">' + esc(t.name) + '</td>' +
+          '<td class="results-col-time">' + esc(t.points) + '<span class="results-pts-unit"> pts</span></td>' +
+          '<td class="results-col-scorers results-scorers">' + scorers + '</td>' +
+          '</tr>';
+      }).join('');
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    function teamCountLabel(n, kind) {
+      var noun = n === 1 ? 'team' : 'teams';
+      return kind ? (n + ' ' + kind + ' ' + noun) : (n + ' ' + noun);
+    }
+
+    function paintTeams() {
+      var race = currentRace();
+      if (!race) return;
+      var host = document.getElementById('teams-content');
+      var countEl = document.getElementById('visible-count');
+      var finishers = (race.rows || []).filter(isFinisher);
+      var updated = updatedText();
+      var suffix = updated ? ' · ' + updated : '';
+      if (!finishers.length) {
+        if (countEl) countEl.textContent = '';
+        host.innerHTML = '<p class="results-empty">Team results will appear once runners finish.</p>';
+        return;
+      }
+      var viewRows = withViewGenderPos(race.rows || []);
+      var mixed = isMixedGenderView(race);
+      if (mixed) {
+        var boys = viewRows.filter(function (r) { return r.gender === 'M'; });
+        var girls = viewRows.filter(function (r) { return r.gender === 'F'; });
+        var boyTeams = buildTeams(boys, state.includeBTeams, 'genderPos');
+        var girlTeams = buildTeams(girls, state.includeBTeams, 'genderPos');
+        var html = '';
+        html += '<section class="results-teams-section" id="teams-section-boys">';
+        html += '<h3 class="results-teams-heading">Boys teams</h3>';
+        if (boyTeams.length) html += teamsTableHtml(boyTeams, 'genderPos', 'boys');
+        else html += '<p class="results-empty">No complete teams of 3.</p>';
+        html += '</section>';
+        html += '<section class="results-teams-section" id="teams-section-girls">';
+        html += '<h3 class="results-teams-heading">Girls teams</h3>';
+        if (girlTeams.length) html += teamsTableHtml(girlTeams, 'genderPos', 'girls');
+        else html += '<p class="results-empty">No complete teams of 3.</p>';
+        html += '</section>';
+        host.innerHTML = html;
+        if (countEl) {
+          if (!boyTeams.length && !girlTeams.length) {
+            countEl.textContent = 'No complete teams of 3' + suffix;
+          } else {
+            countEl.textContent = 'Showing ' + teamCountLabel(boyTeams.length, 'boys') +
+              ' and ' + teamCountLabel(girlTeams.length, 'girls') + suffix;
+          }
+        }
+        return;
+      }
+      var teams = buildTeams(viewRows, state.includeBTeams, 'place');
+      if (!teams.length) {
+        if (countEl) countEl.textContent = 'No complete teams of 3' + suffix;
+        host.innerHTML = '<p class="results-empty">No complete teams of 3 in this category.</p>';
+        return;
+      }
+      host.innerHTML = teamsTableHtml(teams, 'place');
+      if (countEl) {
+        countEl.textContent = 'Showing ' + teamCountLabel(teams.length) + suffix;
+      }
     }
 
     function th(key, label) {
