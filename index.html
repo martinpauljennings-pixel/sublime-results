@@ -1756,11 +1756,33 @@
       return { title: heading, meta: '' };
     }
 
+    function prizeGenderFromLabel(label) {
+      var c = String(label || '').replace(/\s+team$/i, '').replace(/\s+/g, '').toUpperCase();
+      if (/WOMEN|GIRLS|LADIES|FEMALE/.test(c)) return 'F';
+      if (/MEN|BOYS|MALE/.test(c)) return 'M';
+      if (/^(SM|MV\d*|U\d+B)$/.test(c)) return 'M';
+      if (/^(SW|FV\d*|U\d+G)$/.test(c)) return 'F';
+      return '';
+    }
+    function prizeGenderForBib(bib) {
+      var races = (state.data && state.data.races) || [];
+      for (var i = 0; i < races.length; i++) {
+        var rows = races[i].rows || [];
+        for (var j = 0; j < rows.length; j++) {
+          if (String(rows[j].bib) === String(bib) && rows[j].gender) return rows[j].gender;
+        }
+      }
+      return '';
+    }
+    function prizePodCls(g) { return 'podium' + (g === 'M' ? ' podium-m' : (g === 'F' ? ' podium-f' : '')); }
+
     function prizeIndividualTable(item) {
       var html = '<div class="results-table-wrap"><table class="results-table results-table-static pz-table">';
       html += '<thead><tr><th>Position</th><th>Name</th><th>Club</th><th>Bib</th><th>Race pos</th><th>Time</th></tr></thead><tbody>';
+      var lg = prizeGenderFromLabel(item.label);
       html += item.places.map(function (p) {
-        return '<tr class="podium">' +
+        var g = (p.bib ? prizeGenderForBib(p.bib) : '') || lg;
+        return '<tr class="' + prizePodCls(g) + '">' +
           '<td class="results-col-pos"><span class="results-pos">' + esc(p.pos) + '</span></td>' +
           '<td class="results-col-name">' + nameHtml(p.name) + '</td>' +
           '<td class="results-col-cat pz-col-club">' + (p.club ? esc(p.club) : '<span class="results-muted">–</span>') +
@@ -1778,7 +1800,9 @@
       var teams = item.places.map(function (p) {
         return { place: p.pos, name: p.club, points: p.points, scorers: p.scorers || [] };
       });
-      return teamsTableHtml(teams, 'pos', id).replace('results-teams"', 'results-teams pz-teams"');
+      var g = prizeGenderFromLabel(item.label);
+      var html = teamsTableHtml(teams, 'pos', id).replace('results-teams"', 'results-teams pz-teams"');
+      return g ? html.split('<tr class="podium">').join('<tr class="' + prizePodCls(g) + '">') : html;
     }
 
     function renderPrizePanel() {
