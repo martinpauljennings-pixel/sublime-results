@@ -430,6 +430,9 @@
       text-align: center;
       padding: 1px 0;
     }
+    /* Top 3 men and top 3 women: thin solid shadow right and bottom */
+    tr.podium.podium-m .results-pos { box-shadow: 2px 2px 0 #1e6fd9; }
+    tr.podium.podium-f .results-pos { box-shadow: 2px 2px 0 #e85a9b; }
     .runner-name {
       color: var(--results-accent);
       font-weight: 500;
@@ -600,6 +603,21 @@
       .pz-mobile-only { display: inline; }
       .pz-race { margin-bottom: 26px; }
     }
+
+    /* EMAC page */
+    .em-race-count { font: 500 13px var(--results-heading-font); color: var(--results-grey); margin: 0; }
+    @media (min-width: 768px) {
+      table.results-table.em-table { table-layout: fixed; }
+      table.results-table.em-table th:nth-child(1) { width: 80px; }
+      table.results-table.em-table th:nth-child(2) { width: 24%; }
+      table.results-table.em-table th:nth-child(3) { width: 90px; }
+      table.results-table.em-table th:nth-child(5) { width: 70px; }
+      table.results-table.em-table th:nth-child(6) { width: 90px; }
+      table.results-table.em-table th:nth-child(7) { width: 110px; }
+    }
+    @media (max-width: 767px) {
+      table.results-table.em-table .em-desk { display: none; }
+    }
   </style>
 </head>
 <body class="results-shell-page" data-preset="sublime">
@@ -672,10 +690,19 @@
       sortDir: 'asc',
       viewMode: 'individuals',
       includeBTeams: false,
-      prizeRace: ''
+      prizeRace: '',
+      emacRace: '',
+      userSort: false
     };
 
+    // Default order for a view: finish position once it has results,
+    // otherwise the start list order (bib).
+    function defaultSortKey(race) { return race && race.hasResults ? 'place' : 'bib'; }
+
     var PRIZE_ID = 'prize-giving';
+    var EMAC_ID = 'emac';
+    // Views that are not a category (no category row data of their own).
+    function isSpecialView(id) { id = String(id); return id === PRIZE_ID || id === EMAC_ID; }
 
     var VIEW_DEFS = [
       { id: 'u12',  label: 'U12 Boys & Girls',           raceId: 1 },
@@ -846,15 +873,23 @@
         var vm = state.viewMode, incB = state.includeBTeams;
         state.data = data;
         state.views = buildViews(data);
-        state.activeId = (keepId === PRIZE_ID || viewById(keepId)) ? keepId : defaultViewId(state.views);
+        state.activeId = (isSpecialView(keepId) || viewById(keepId)) ? keepId : defaultViewId(state.views);
         state.query = q; state.gender = g; state.category = c; state.club = cl;
         state.sortKey = sk; state.sortDir = sd;
+        // Results arrived (or changed) on refresh: switch to position order by
+        // itself, unless the visitor picked a sort themselves.
+        if (!state.userSort) {
+          var curRace = currentRace();
+          if (curRace) { state.sortKey = defaultSortKey(curRace); state.sortDir = 'asc'; }
+        }
         state.viewMode = vm || 'individuals';
         state.includeBTeams = teamSettings().allowBTeams ? !!incB : false;
-        renderHero();
-        renderTabs();
-        renderUpdated();
-        renderPanels();
+        preserveScroll(function () {
+          renderHero();
+          renderTabs();
+          renderUpdated();
+          renderPanels();
+        });
         return;
       }
       render(data);
@@ -893,10 +928,14 @@
       state.views = buildViews(data);
       var ts = teamSettings();
       state.includeBTeams = !!(ts.allowBTeams && ts.showBTeamsByDefault);
-      if (String(window.location.hash || '').replace('#', '') === PRIZE_ID) state.activeId = PRIZE_ID;
-      if (!state.activeId || (state.activeId !== PRIZE_ID && !viewById(state.activeId))) {
+      var hashId = String(window.location.hash || '').replace('#', '');
+      if (isSpecialView(hashId)) state.activeId = hashId;
+      if (!state.activeId || (!isSpecialView(state.activeId) && !viewById(state.activeId))) {
         state.activeId = defaultViewId(state.views);
       }
+      state.sortKey = defaultSortKey(currentRace());
+      state.sortDir = 'asc';
+      state.userSort = false;
       document.getElementById('event-title').textContent = data.title || '2026 - Eastern AA Cross Country Championships';
       document.getElementById('event-location').textContent = data.location || 'Horseheath Racecourse';
       document.title = (data.title || 'Results') + ' results';
@@ -918,7 +957,7 @@
       html += statHtml('Finishers', finishers, '');
       html += statHtml('Men', men, '');
       html += statHtml('Women', women, '');
-      if (String(state.activeId) !== PRIZE_ID) {
+      if (!isSpecialView(state.activeId)) {
         html += statHtml('1st man', firstMan ? firstMan.time : '—', firstMan ? firstMan.name : '');
         html += statHtml('1st woman', firstWoman ? firstWoman.time : '—', firstWoman ? firstWoman.name : '');
       }
@@ -951,6 +990,15 @@
         ' aria-selected="' + (prizeSel ? 'true' : 'false') + '"' +
         ' tabindex="' + (prizeSel ? '0' : '-1') + '"' +
         ' data-id="' + PRIZE_ID + '">Prize giving</button>';
+      var emacSel = String(state.activeId) === EMAC_ID;
+      var emacN = emacReady() ? emacCount() : 0;
+      html += '<button type="button" role="tab" class="results-tab-prize" id="tab-' + EMAC_ID + '"' +
+        ' aria-controls="panel-' + EMAC_ID + '"' +
+        ' aria-selected="' + (emacSel ? 'true' : 'false') + '"' +
+        ' tabindex="' + (emacSel ? '0' : '-1') + '"' +
+        ' data-id="' + EMAC_ID + '">EMAC' +
+        (emacN ? '<span class="results-cnt" aria-label="' + esc(emacN + ' EMAC members') + '">' + esc(emacN) + '</span>' : '') +
+        '</button>';
       var wrap = document.getElementById('race-tabs');
       wrap.innerHTML = html;
       wrap.querySelectorAll('[role=tab]').forEach(function (btn) {
@@ -969,7 +1017,7 @@
     function renderUpdated() {}
 
     function currentRace() {
-      if (String(state.activeId) === PRIZE_ID) return null;
+      if (isSpecialView(state.activeId)) return null;
       return viewById(state.activeId) || (state.views && state.views[0]) || null;
     }
 
@@ -980,17 +1028,45 @@
       state.category = '';
       state.club = '';
       var race = currentRace();
-      state.sortKey = race && race.hasResults ? 'place' : 'bib';
+      state.sortKey = defaultSortKey(race);
       state.sortDir = 'asc';
+      state.userSort = false;
       try {
-        if (id === PRIZE_ID) history.replaceState(null, '', '#' + PRIZE_ID);
+        if (isSpecialView(id)) history.replaceState(null, '', '#' + id);
         else if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search);
       } catch (eHash) {}
-      renderHero();
-      renderTabs();
-      renderPanels();
-      var panel = document.getElementById('panel-' + id);
-      if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Keep the page where it is: no scrolling to the panel, and the
+      // content area keeps its height while the new view is drawn.
+      preserveScroll(function () {
+        renderHero();
+        renderTabs();
+        renderPanels();
+      });
+      var btn = document.getElementById('tab-' + id);
+      if (btn && btn.focus) { try { btn.focus({ preventScroll: true }); } catch (eF) {} }
+    }
+
+    // Runs fn (which redraws the page) without moving the page. The results
+    // area keeps at least its old height until the next redraw, so a shorter
+    // view cannot pull the page up.
+    function preserveScroll(fn) {
+      var x = window.scrollX || window.pageXOffset || 0;
+      var y = window.scrollY || window.pageYOffset || 0;
+      var host = document.getElementById('race-panels');
+      var oldH = host ? host.offsetHeight : 0;
+      if (host) host.style.minHeight = oldH ? (oldH + 'px') : '';
+      fn();
+      if (host) {
+        // Only keep the extra height that is needed to stay at the same scroll.
+        host.style.minHeight = '';
+        for (var k = 0; k < 3; k++) {
+          var de = document.documentElement;
+          var maxY = de.scrollHeight - (de.clientHeight || window.innerHeight);
+          if (y <= maxY) break;
+          host.style.minHeight = (host.offsetHeight + (y - maxY)) + 'px';
+        }
+      }
+      window.scrollTo(x, y);
     }
 
     function unique(rows, key) {
@@ -1008,6 +1084,10 @@
     function renderPanels() {
       if (String(state.activeId) === PRIZE_ID) {
         renderPrizePanel();
+        return;
+      }
+      if (String(state.activeId) === EMAC_ID) {
+        renderEmacPanel();
         return;
       }
       var race = currentRace();
@@ -1099,7 +1179,7 @@
           var next = btn.getAttribute('data-mode');
           if (state.viewMode === next) return;
           state.viewMode = next;
-          renderPanels();
+          preserveScroll(renderPanels);
         });
       });
       if (teamsMode) {
@@ -1115,14 +1195,15 @@
         document.getElementById('q').addEventListener('input', function (e) { state.query = e.target.value; paintRows(); });
         document.getElementById('f-gender').addEventListener('change', function (e) { state.gender = e.target.value; paintRows(); });
         document.getElementById('f-category').addEventListener('change', function (e) { state.category = e.target.value; paintRows(); });
-        document.getElementById('f-sort').addEventListener('change', function (e) { var v = e.target.value.split('|'); state.sortKey = v[0]; state.sortDir = v[1]; renderPanels(); });
+        document.getElementById('f-sort').addEventListener('change', function (e) { var v = e.target.value.split('|'); state.sortKey = v[0]; state.sortDir = v[1]; state.userSort = true; preserveScroll(renderPanels); });
         document.getElementById('f-club').addEventListener('change', function (e) { state.club = e.target.value; paintRows(); });
         host.querySelectorAll('thead th[data-key]').forEach(function (thEl) {
           thEl.addEventListener('click', function () {
             var key = thEl.getAttribute('data-key');
             if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
             else { state.sortKey = key; state.sortDir = key === 'name' || key === 'club' || key === 'category' || key === 'gender' ? 'asc' : 'asc'; }
-            renderPanels();
+            state.userSort = true;
+            preserveScroll(renderPanels);
           });
         });
         paintRows();
@@ -1480,13 +1561,27 @@
       if (!race) return;
       var rows = filteredRows(race);
       var body = document.getElementById('results-body');
+      // Gender position of each finisher in this list (by finish place), so
+      // the top 3 men and top 3 women are highlighted.
+      var genderRank = {}, gSeen = {};
+      (race.rows || []).filter(function (r) { return r.place && isFinisher(r); })
+        .sort(function (a, b) { return (placeNum(a) || 1e12) - (placeNum(b) || 1e12); })
+        .forEach(function (r) {
+          var g = r.gender || '';
+          if (g !== 'M' && g !== 'F') return;
+          gSeen[g] = (gSeen[g] || 0) + 1;
+          genderRank[rowKey(r)] = gSeen[g];
+        });
       var html = rows.map(function (r) {
-        var podium = r.place === 1 || r.place === 2 || r.place === 3;
+        var gp = genderRank[rowKey(r)] || parseInt(r.genderPos, 10);
+        var hasPlace = !!r.place && isFinisher(r);
+        var podium = hasPlace && ((gp >= 1 && gp <= 3) || r.place === 1 || r.place === 2 || r.place === 3);
+        var podCls = podium ? ('podium' + (r.gender === 'M' ? ' podium-m' : (r.gender === 'F' ? ' podium-f' : ''))) : '';
         var sub = [];
         if (r.catPos) sub.push('cat pos ' + r.catPos);
         sub.push(r.club || '–');
         if (r.bib) sub.push('bib ' + r.bib);
-        return '<tr class="' + (podium ? 'podium' : '') + (state.query ? ' result-search-highlight' : '') + '">' +
+        return '<tr class="' + podCls + (state.query ? ' result-search-highlight' : '') + '">' +
           '<td class="results-col-pos">' + (r.place ? '<span class="results-pos">' + esc(r.place) + '</span>' : '<span class="results-muted">–</span>') + '</td>' +
           '<td class="results-col-name">' + nameHtml(r.name) + '</td>' +
           '<td>' + dash(r.gender) + '</td>' +
@@ -1734,7 +1829,128 @@
       host.querySelectorAll('[data-prace]').forEach(function (btn) {
         btn.addEventListener('click', function () {
           state.prizeRace = btn.getAttribute('data-prace');
-          renderPrizePanel();
+          preserveScroll(renderPrizePanel);
+        });
+      });
+    }
+
+    /* ---------------- EMAC members ---------------- */
+
+    // True once the data feed carries the EMAC flag (Apps Script v5 and the
+    // Team2 column in Raw data). Until then the EMAC page says so.
+    function emacReady() {
+      return !!(state.data && state.data.emacReady);
+    }
+
+    function emacRaces() {
+      var races = (state.data && state.data.races) || [];
+      return races.map(function (race) {
+        var rows = (race.rows || []).filter(function (r) { return r.emac === true; }).map(cloneRow);
+        var fin = rows.filter(isFinisher).sort(function (a, b) {
+          var d = timeToSecAsc(a.time) - timeToSecAsc(b.time);
+          if (d) return d;
+          return (placeNum(a) || 1e12) - (placeNum(b) || 1e12);
+        });
+        var rest = rows.filter(function (r) { return !isFinisher(r); }).sort(function (a, b) {
+          var d = (parseInt(a.bib, 10) || 1e12) - (parseInt(b.bib, 10) || 1e12);
+          if (d) return d;
+          return String(a.name).localeCompare(String(b.name));
+        });
+        fin.forEach(function (r, i) { r.emacPos = i + 1; });
+        return { race: race, rows: fin.concat(rest), finishers: fin.length };
+      });
+    }
+
+    function emacCount() {
+      return emacRaces().reduce(function (t, g) { return t + g.rows.length; }, 0);
+    }
+
+    function rowKey(r) { return String(r.bib || '') + '|' + String(r.name || ''); }
+
+    function timeToSecAsc(t) {
+      if (!t) return 1e12;
+      var parts = String(t).split(':').map(Number);
+      if (parts.some(function (n) { return !isFinite(n); })) return 1e12;
+      var sec = 0;
+      parts.forEach(function (n) { sec = sec * 60 + n; });
+      return sec;
+    }
+
+    function emacTable(group) {
+      var hasRes = group.finishers > 0;
+      var html = '<div class="results-table-wrap"><table class="results-table results-table-static em-table">';
+      html += '<thead><tr><th>EMAC pos</th><th>Name</th><th>Category</th><th>Club</th><th>Bib</th><th>Race pos</th><th>Chip time</th></tr></thead><tbody>';
+      html += group.rows.map(function (r) {
+        var sub = [];
+        if (r.category) sub.push(r.category);
+        sub.push(r.club || '–');
+        if (r.bib) sub.push('bib ' + r.bib);
+        if (r.emacPos && r.place) sub.push('race pos ' + r.place);
+        return '<tr>' +
+          '<td class="results-col-pos">' + (r.emacPos ? '<span class="results-pos">' + esc(r.emacPos) + '</span>' : '<span class="results-muted">–</span>') + '</td>' +
+          '<td class="results-col-name">' + nameHtml(r.name) + '</td>' +
+          '<td class="results-col-cat" data-sub="' + esc(sub.join(' · ')) + '"><span class="em-desk">' + dash(r.category) + '</span><span class="pz-mobile-only">' + esc(sub.join(' · ')) + '</span></td>' +
+          '<td>' + (r.club ? esc(r.club) : '<span class="results-muted">–</span>') + '</td>' +
+          '<td>' + dash(r.bib) + '</td>' +
+          '<td>' + (r.emacPos ? dash(r.place) : '<span class="results-muted">–</span>') + '</td>' +
+          '<td class="results-col-time">' + (r.emacPos && r.time ? esc(r.time) : '<span class="results-muted">–</span>') + '</td>' +
+          '</tr>';
+      }).join('');
+      html += '</tbody></table></div>';
+      return html;
+    }
+
+    function renderEmacPanel() {
+      var host = document.getElementById('race-panels');
+      var ready = emacReady();
+      var groups = ready ? emacRaces().filter(function (g) { return g.rows.length; }) : [];
+      var anyRes = groups.some(function (g) { return g.finishers > 0; });
+      var total = groups.reduce(function (t, g) { return t + g.rows.length; }, 0);
+      var updated = updatedText();
+      var html = '<section class="results-panel" id="panel-' + EMAC_ID + '" role="tabpanel" aria-labelledby="tab-' + EMAC_ID + '">';
+      html += '<div class="results-dist-head">';
+      html += '<h2 class="results-dist-title">EMAC members</h2>';
+      html += '<span class="results-mode">' + (!ready ? 'Waiting for data' : (anyRes ? 'Results' : 'Start list')) + '</span>';
+      html += '</div>';
+      if (groups.length > 1) {
+        if (state.emacRace !== '' && !groups.some(function (g) { return String(g.race.id) === String(state.emacRace); })) state.emacRace = '';
+        html += '<div class="results-view-tabs"><div class="results-seg results-seg-mode" role="tablist" aria-label="Race">';
+        var opts = [['', 'All races']].concat(groups.map(function (g) { return [String(g.race.id), 'Race ' + g.race.id]; }));
+        html += opts.map(function (o) {
+          var sel = String(state.emacRace) === o[0];
+          return '<button type="button" role="tab" data-erace="' + esc(o[0]) + '" aria-selected="' + (sel ? 'true' : 'false') + '" tabindex="' + (sel ? '0' : '-1') + '">' + esc(o[1]) + '</button>';
+        }).join('');
+        html += '</div></div>';
+      }
+      if (!ready) {
+        html += '<p class="pz-intro">Eastern Masters (EMAC) members by race, in chip time order. The EMAC list is not in the live data yet. It will appear here automatically, with no need to reload the page.</p>';
+      } else if (!groups.length) {
+        html += '<p class="pz-intro">No EMAC members found in the entries yet.' + (updated ? ' ' + esc(updated) + '.' : '') + '</p>';
+      } else {
+        html += '<p class="pz-intro">' + esc(total) + ' Eastern Masters (EMAC) members, by race in chip time order. EMAC pos is the position among EMAC members in that race; race pos is the overall finishing position.' +
+          (anyRes ? '' : ' Times will appear here as results come in.') +
+          (updated ? ' ' + esc(updated) + '.' : '') + '</p>';
+      }
+      groups.forEach(function (g) {
+        if (state.emacRace !== '' && String(g.race.id) !== String(state.emacRace)) return;
+        var meta = [];
+        if (g.race.start) meta.push('Start ' + g.race.start);
+        if (g.race.distance) meta.push(g.race.distance);
+        if (g.race.name) meta.push(g.race.name);
+        html += '<section class="pz-race" id="em-race-' + esc(g.race.id) + '">';
+        html += '<div class="pz-race-head"><h3 class="pz-race-title">Race ' + esc(g.race.id) + '</h3>' +
+          '<p class="pz-race-meta">' + esc(meta.join(' · ')) + '</p>' +
+          '<p class="em-race-count">' + esc(g.rows.length) + (g.rows.length === 1 ? ' member' : ' members') +
+          (g.finishers ? ' · ' + esc(g.finishers) + ' finished' : '') + '</p></div>';
+        html += emacTable(g);
+        html += '</section>';
+      });
+      html += '</section>';
+      host.innerHTML = html;
+      host.querySelectorAll('[data-erace]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          state.emacRace = btn.getAttribute('data-erace');
+          preserveScroll(renderEmacPanel);
         });
       });
     }
