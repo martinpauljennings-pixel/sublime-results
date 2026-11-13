@@ -955,11 +955,11 @@
       var firstWoman = race && race.firstWoman;
       var html = '';
       html += statHtml('Finishers', finishers, '');
-      html += statHtml('Men', men, '');
-      html += statHtml('Women', women, '');
+      html += statHtml('Male', men, '');
+      html += statHtml('Female', women, '');
       if (!isSpecialView(state.activeId)) {
-        html += statHtml('1st man', firstMan ? firstMan.time : '—', firstMan ? firstMan.name : '');
-        html += statHtml('1st woman', firstWoman ? firstWoman.time : '—', firstWoman ? firstWoman.name : '');
+        html += statHtml('1st male', firstMan ? firstMan.time : '—', firstMan ? firstMan.name : '');
+        html += statHtml('1st female', firstWoman ? firstWoman.time : '—', firstWoman ? firstWoman.name : '');
       }
       document.getElementById('hero-stats').innerHTML = html;
     }
@@ -1121,14 +1121,14 @@
       html += '<div class="results-dstats">';
       if (race.hasResults) {
         html += statTile('Finishers', race.finishers);
-        html += statTile('Men', race.men);
-        html += statTile('Women', race.women);
-        html += statTile('1st man', race.firstMan ? race.firstMan.time : '—', race.firstMan && race.firstMan.name);
-        html += statTile('1st woman', race.firstWoman ? race.firstWoman.time : '—', race.firstWoman && race.firstWoman.name);
+        html += statTile('Male', race.men);
+        html += statTile('Female', race.women);
+        html += statTile('1st male', race.firstMan ? race.firstMan.time : '—', race.firstMan && race.firstMan.name);
+        html += statTile('1st female', race.firstWoman ? race.firstWoman.time : '—', race.firstWoman && race.firstWoman.name);
       } else {
         html += statTile('Entered', race.entered);
-        html += statTile('Men', countGender(race.rows, 'M'));
-        html += statTile('Women', countGender(race.rows, 'F'));
+        html += statTile('Male', countGender(race.rows, 'M'));
+        html += statTile('Female', countGender(race.rows, 'F'));
       }
       html += '</div>';
       var teamsMode = state.viewMode === 'teams';
